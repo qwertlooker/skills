@@ -17,8 +17,8 @@
   --accent-green: #62b230;
   --accent-cyan: #30b5c5;
 
-  --font-cn: "FZLanTingHei-R-GBK", "方正兰亭黑简体", "Microsoft YaHei", "微软雅黑", "PingFang SC", sans-serif;
-  --font-en: "Huawei Sans", Arial, "Helvetica Neue", sans-serif;
+  --font-cn: "Microsoft YaHei", "微软雅黑", "PingFang SC", sans-serif;
+  --font-en: Arial, "Helvetica Neue", sans-serif;
 
   --cover-title: 56px;
   --slide-title: 43px;
