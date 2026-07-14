@@ -31,6 +31,12 @@
   --slide-padding-x: 96px;
   --slide-padding-y: 62px;
   --module-gap: 32px;
+  --flow-gap: 24px;
+  --flow-arrow-offset: -17px; /* Derived from 24px gap and 10px arrow width. */
+  --preview-scale: 1;
+  --preview-width: 1920px;
+  --preview-height: 1080px;
+  --preview-gap: 40px;
 }
 
 * {
@@ -49,6 +55,7 @@ body {
 
 body {
   padding: 40px 0;
+  overflow-x: hidden;
 }
 
 .slide {
@@ -111,6 +118,7 @@ body {
 }
 
 .title-rule::before {
+  flex: none;
   width: 84px;
   content: "";
   background: var(--huawei-red);
@@ -197,7 +205,7 @@ body {
 .flow {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 24px;
+  gap: var(--flow-gap);
   align-items: stretch;
 }
 
@@ -211,7 +219,7 @@ body {
 .flow-step:not(:last-child)::after {
   position: absolute;
   top: 50%;
-  right: -17px;
+  right: var(--flow-arrow-offset);
   width: 10px;
   height: 10px;
   content: "";
@@ -301,10 +309,19 @@ body {
   font-size: var(--source);
 }
 
-@media screen and (max-width: 1920px) {
-  .slide {
-    transform-origin: top center;
-  }
+.slide-shell {
+  position: relative;
+  width: var(--preview-width);
+  height: var(--preview-height);
+  margin: 0 auto var(--preview-gap);
+}
+
+.slide-shell > .slide {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  transform: scale(var(--preview-scale));
+  transform-origin: top left;
 }
 
 @media print {
@@ -320,7 +337,18 @@ body {
 
   .slide {
     margin: 0;
-    page-break-after: always;
+    page-break-after: auto;
     box-shadow: none;
+  }
+
+  .slide-shell {
+    width: 1920px;
+    height: 1080px;
+    margin: 0;
+    page-break-after: always;
+  }
+
+  .slide-shell > .slide {
+    transform: none;
   }
 }
