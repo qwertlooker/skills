@@ -1,0 +1,66 @@
+name: Release Agent Package
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - '.agents/**'
+      - '.agent/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine agent directory
+        id: agent-dir
+        run: |
+          if [ -d ".agents" ]; then
+            echo "dir=.agents" >> $GITHUB_OUTPUT
+            echo "Agent directory found: .agents"
+          elif [ -d ".agent" ]; then
+            echo "dir=.agent" >> $GITHUB_OUTPUT
+            echo "Agent directory found: .agent"
+          else
+            echo "Error: No .agent or .agents directory found"
+            exit 1
+          fi
+
+      - name: Get version info
+        id: version
+        run: |
+          SHA_SHORT=$(git rev-parse --short HEAD)
+          DATE=$(date +%Y%m%d)
+          echo "version=${DATE}-${SHA_SHORT}" >> $GITHUB_OUTPUT
+          echo "tag=agent-release-${DATE}-${SHA_SHORT}" >> $GITHUB_OUTPUT
+
+      - name: Create release zip
+        run: |
+          AGENT_DIR="${{ steps.agent-dir.outputs.dir }}"
+          VERSION="${{ steps.version.outputs.version }}"
+          ZIP_NAME="agent-release-${VERSION}.zip"
+          zip -r "${ZIP_NAME}" "${AGENT_DIR}" -x "*.git*" -x "*node_modules*"
+          echo "zip_name=${ZIP_NAME}" >> $GITHUB_OUTPUT
+          echo "zip_path=${GITHUB_WORKSPACE}/${ZIP_NAME}" >> $GITHUB_OUTPUT
+        id: zip
+        working-directory: ${{ github.workspace }}
+
+      - name: Create Release and Upload Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Agent Release ${{ steps.version.outputs.version }}
+          files: ${{ steps.zip.outputs.zip_path }}
+          body: |
+            Agent package released on ${{ steps.version.outputs.version }}
+            - Source commit: ${{ github.sha }}
+            - Triggered by: ${{ github.actor }}
+          generate_release_notes: true
