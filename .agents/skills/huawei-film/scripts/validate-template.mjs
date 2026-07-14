@@ -49,6 +49,15 @@ if (!css.includes('--font-en: Arial,')) {
 if (!css.includes(".title-rule::before") || !css.includes("flex: none")) {
   errors.push("CSS: title rule red segment must not shrink");
 }
+if (!css.includes(".flow-step h3") || !css.includes(".flow-step p")) {
+  errors.push("CSS: flow step heading and body styles are missing");
+}
+if (!css.includes("--flow-columns") || !css.includes(".flow-3") || !css.includes(".flow-5")) {
+  errors.push("CSS: reusable flow column variants are missing");
+}
+if (!css.includes(".page-number::before") || !css.includes("counter-increment: slide")) {
+  errors.push("CSS: automatic page numbering is missing");
+}
 
 const opens = (css.match(/{/g) || []).length;
 const closes = (css.match(/}/g) || []).length;
@@ -61,6 +70,12 @@ if (!html.includes('../resources/huawei-film-theme.css')) {
 }
 if (!html.includes("fitSlides") || !html.includes("slide-shell")) {
   errors.push("HTML: responsive preview wrapper is missing");
+}
+if ((html.match(/class="page-number"/g) || []).length !== slideCount) {
+  errors.push("HTML: every slide must use an automatic page-number placeholder");
+}
+if (/<span>0\d<\/span>/.test(html)) {
+  errors.push("HTML: hardcoded page numbers are not allowed");
 }
 
 for (const forbidden of [">HUAWEI<", "Huawei Confidential", "Huawei Proprietary"]) {
