@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>演示文稿</title>
+  <style>
+    :root {
+      --huawei-red: #c7000b;
+      --red-dark: #7f0001;
+      --ink: #231815;
+      --text: #595757;
+      --muted: #9fa0a0;
+      --line: #dcdddd;
+      --soft: #f7f7f7;
+      --page-w: 1600px;
+      --page-h: 900px;
+      --cover-title: 56px;
+      --slide-title: 43px;
+      --key-statement: 35px;
+      --body: 27px;
+      --label: 22px;
+      --source: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      color: var(--ink);
+      background: #e9eaeb;
+      font-family: Arial, "Microsoft YaHei", "微软雅黑", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button { font: inherit; }
+    .viewport { position: fixed; inset: 0; display: grid; place-items: center; }
+
+    .deck {
+      position: relative;
+      width: var(--page-w);
+      height: var(--page-h);
+      transform-origin: center center;
+      background: #fff;
+      box-shadow: 0 18px 60px rgb(35 24 21 / 18%);
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: none;
+      overflow: hidden;
+      padding: 58px 88px 52px;
+      background: #fff;
+    }
+
+    .slide.active { display: block; }
+
+    .slide-title {
+      max-width: 1330px;
+      margin: 0;
+      color: var(--huawei-red);
+      font-size: var(--slide-title);
+      font-weight: 700;
+      letter-spacing: -0.4px;
+      line-height: 1.22;
+    }
+
+    .focus { color: var(--huawei-red); }
+    .subtitle { margin: 12px 0 0; color: var(--text); font-size: 24px; line-height: 1.5; }
+
+    .footer {
+      position: absolute;
+      right: 88px;
+      bottom: 22px;
+      left: 88px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 10px;
+      border-top: 1px solid #ececec;
+      color: var(--muted);
+      font-size: var(--source);
+    }
+
+    .page-no { color: var(--huawei-red); font-weight: 700; }
+
+    .controls {
+      position: fixed;
+      right: 22px;
+      bottom: 20px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px;
+      color: #fff;
+      background: rgb(35 24 21 / 88%);
+      border-radius: 4px;
+      box-shadow: 0 8px 28px rgb(0 0 0 / 18%);
+      font-size: var(--source);
+    }
+
+    .controls button {
+      min-width: 42px;
+      height: 34px;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 2px;
+      color: #fff;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .controls button:hover,
+    .controls button:focus-visible { background: var(--huawei-red); }
+    .controls .count { min-width: 54px; text-align: center; }
+
+    /* Cover */
+    .cover { padding: 0; }
+    .cover-grid { display: grid; grid-template-columns: 58% 42%; width: 100%; height: 100%; }
+    .cover-copy { display: flex; flex-direction: column; justify-content: center; padding: 42px 42px 78px 116px; }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 0 0 30px;
+      color: var(--text);
+      font-size: var(--label);
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+
+    .eyebrow::before { flex: none; width: 56px; height: 5px; content: ""; background: var(--huawei-red); }
+    .cover h1 { max-width: 760px; margin: 0; font-size: var(--cover-title); line-height: 1.2; }
+    .cover .lead { max-width: 720px; margin: 24px 0 0; color: var(--text); font-size: var(--body); line-height: 1.5; }
+    .cover-meta { position: absolute; bottom: 58px; left: 116px; color: var(--muted); font-size: var(--label); }
+
+    .cover-visual { position: relative; overflow: hidden; background: var(--soft); }
+    .cover-visual::before { position: absolute; top: 130px; left: 80px; width: 420px; height: 420px; content: ""; border: 2px solid #d4d5d5; transform: rotate(45deg); }
+    .cover-visual::after { position: absolute; right: 110px; bottom: 92px; width: 24px; height: 24px; content: ""; border-radius: 50%; background: var(--huawei-red); }
+    .visual-lines { position: absolute; top: 226px; left: 136px; z-index: 2; width: 360px; height: 280px; border-top: 5px solid var(--huawei-red); border-bottom: 5px solid var(--ink); }
+    .visual-lines::before,
+    .visual-lines::after { position: absolute; content: ""; background: var(--line); }
+    .visual-lines::before { top: 74px; right: 0; left: 0; height: 2px; box-shadow: 0 74px 0 var(--line); }
+    .visual-lines::after { top: 0; bottom: 0; left: 116px; width: 2px; box-shadow: 116px 0 0 var(--line); }
+
+    /* Claim and peer modules */
+    .takeaway {
+      display: grid;
+      grid-template-columns: 12px 1fr;
+      gap: 22px;
+      margin-top: 36px;
+      padding: 24px 28px 24px 0;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      font-size: var(--key-statement);
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .takeaway::before { content: ""; background: var(--huawei-red); }
+    .modules { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 38px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .module { min-height: 290px; padding: 30px 34px 26px; border-right: 1px solid var(--line); }
+    .module:last-child { border-right: 0; }
+    .module .index { color: var(--huawei-red); font-size: var(--label); font-weight: 700; }
+    .module h3 { margin: 18px 0 14px; font-size: var(--body); }
+    .module p { margin: 0; color: var(--text); font-size: 24px; line-height: 1.55; }
+    .summary { display: flex; align-items: center; gap: 18px; margin-top: 28px; color: var(--text); font-size: 24px; }
+    .summary b { color: var(--ink); }
+    .summary-label { padding: 8px 14px; color: #fff; background: var(--ink); font-size: var(--label); }
+
+    /* Comparison table */
+    .comparison { margin-top: 34px; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--ink); }
+    .comparison-row { display: grid; grid-template-columns: 210px 1.05fr 1fr 1fr; }
+    .comparison-row > div { display: flex; align-items: center; min-height: 116px; padding: 17px 20px; border-top: 1px solid var(--line); border-right: 1px solid #e7e7e7; color: var(--text); font-size: var(--label); line-height: 1.45; }
+    .comparison-row > div:last-child { border-right: 0; }
+    .comparison-head > div { min-height: auto; padding-block: 14px; border-top: 0; background: var(--soft); font-weight: 700; }
+    .comparison-row .row-title { position: relative; padding-left: 34px; color: var(--ink); font-size: 25px; font-weight: 700; }
+    .comparison-row .row-title::before { position: absolute; left: 18px; width: 5px; height: 42px; content: ""; background: var(--huawei-red); }
+
+    /* Layered architecture */
+    .architecture-wrap { display: grid; grid-template-columns: 1fr 230px; gap: 22px; margin-top: 32px; }
+    .architecture { display: grid; grid-template-columns: 190px 1fr; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--ink); }
+    .layer-name { display: flex; align-items: center; padding: 0 22px; border-bottom: 1px solid var(--line); background: var(--soft); font-size: 24px; font-weight: 700; }
+    .layer-content { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 12px; align-items: center; min-height: 124px; padding: 20px 22px; border-bottom: 1px solid var(--line); border-left: 1px solid var(--line); }
+    .layer-name:last-of-type,
+    .layer-content:last-child { border-bottom: 0; }
+    .node { display: grid; place-items: center; min-height: 72px; padding: 10px 12px; border: 1px solid #cfd0d0; color: var(--text); text-align: center; font-size: var(--label); line-height: 1.35; }
+    .layer-name.focus-layer { color: #fff; background: var(--huawei-red); }
+    .layer-content.focus-layer { background: #fff8f8; border-left-color: #efc6c9; }
+    .layer-content.focus-layer .node { border-color: #d79095; color: var(--red-dark); font-weight: 700; }
+    .governance { display: grid; grid-template-rows: auto repeat(4, 1fr); border-top: 2px solid var(--ink); border-bottom: 1px solid var(--ink); background: var(--soft); }
+    .governance h3 { margin: 0; padding: 18px 16px; border-bottom: 1px solid var(--line); font-size: 24px; text-align: center; }
+    .governance div { display: grid; place-items: center; padding: 8px; border-bottom: 1px solid var(--line); color: var(--text); font-size: var(--label); text-align: center; }
+    .governance div:last-child { border-bottom: 0; }
+
+    /* Phased roadmap */
+    .roadmap { display: grid; grid-template-columns: 1fr 86px 1fr 86px 1fr; align-items: stretch; margin-top: 42px; }
+    .phase { min-height: 340px; padding: 30px 30px 26px; border-top: 5px solid var(--ink); background: var(--soft); }
+    .phase.active-phase { border-top-color: var(--huawei-red); background: #fff7f7; }
+    .phase .step { color: var(--huawei-red); font-size: var(--label); font-weight: 700; }
+    .phase h3 { margin: 16px 0 18px; font-size: var(--body); }
+    .phase ul { margin: 0; padding-left: 24px; color: var(--text); font-size: var(--label); line-height: 1.65; }
+    .phase .output { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); font-size: var(--label); font-weight: 700; }
+    .gate { position: relative; display: grid; place-items: center; color: var(--text); }
+    .gate::before { position: absolute; right: 8px; left: 8px; height: 2px; content: ""; background: var(--line); }
+    .gate b { position: relative; z-index: 1; display: grid; place-items: center; width: 58px; height: 58px; border: 2px solid var(--huawei-red); border-radius: 50%; color: var(--huawei-red); background: #fff; font-size: var(--label); }
+
+    .source-note { position: absolute; right: 88px; bottom: 48px; left: 88px; color: var(--muted); font-size: var(--source); line-height: 1.35; }
+
+    @media print {
+      @page { size: 13.333in 7.5in; margin: 0; }
+      html,
+      body { width: auto; height: auto; overflow: visible; background: #fff; }
+      .viewport { position: static; display: block; }
+      .deck { width: 13.333in; height: auto; transform: none !important; box-shadow: none; }
+      .slide,
+      .slide.active { position: relative; display: block; width: 1600px; height: 900px; zoom: 0.8; break-after: page; page-break-after: always; }
+      .controls { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Replace all bracketed placeholders. Omit the logo unless an authorized asset is supplied. -->
+  <main class="viewport" aria-label="演示文稿">
+    <div class="deck" id="deck">
+      <section class="slide cover active" data-title="封面">
+        <div class="cover-grid">
+          <div class="cover-copy">
+            <p class="eyebrow">[汇报场景或受众]</p>
+            <h1><span class="focus">[主题关键词]</span>[汇报主题]</h1>
+            <p class="lead">[一句话主张：说明变化、价值或行动方向]</p>
+            <div class="cover-meta">[组织或项目名称] · [日期]</div>
+          </div>
+          <div class="cover-visual" aria-hidden="true"><div class="visual-lines"></div></div>
+        </div>
+        <footer class="footer"><span>[组织或项目名称]</span><span class="page-no" data-page-number></span></footer>
+      </section>
+
+      <section class="slide" data-title="核心判断">
+        <h2 class="slide-title">[结论性标题，<span class="focus">只强调一个短语</span>]</h2>
+        <div class="takeaway">[用一句话解释标题为何成立，以及对受众意味着什么]</div>
+        <div class="modules">
+          <article class="module"><div class="index">01</div><h3>[支撑观点一]</h3><p>[证据、事实或业务含义；不编造指标。]</p></article>
+          <article class="module"><div class="index">02</div><h3>[支撑观点二]</h3><p>[证据、事实或业务含义；不编造指标。]</p></article>
+          <article class="module"><div class="index">03</div><h3>[支撑观点三]</h3><p>[证据、事实或业务含义；不编造指标。]</p></article>
+        </div>
+        <div class="summary"><span class="summary-label">[受众关注]</span><b>[需要理解、判断或推动的事项]</b></div>
+        <footer class="footer"><span>[组织或项目名称]</span><span class="page-no" data-page-number></span></footer>
+      </section>
+
+      <section class="slide" data-title="比较分析">
+        <h2 class="slide-title">[比较页的<span class="focus">决策结论</span>]</h2>
+        <p class="subtitle">[交代比较口径、范围或需要验证的假设]</p>
+        <div class="comparison">
+          <div class="comparison-row comparison-head"><div>[对象]</div><div>[维度一]</div><div>[维度二]</div><div>[维度三]</div></div>
+          <div class="comparison-row"><div class="row-title">[对象A]</div><div>[内容]</div><div>[内容]</div><div>[内容]</div></div>
+          <div class="comparison-row"><div class="row-title">[对象B]</div><div>[内容]</div><div>[内容]</div><div>[内容]</div></div>
+          <div class="comparison-row"><div class="row-title">[对象C]</div><div>[内容]</div><div>[内容]</div><div>[内容]</div></div>
+        </div>
+        <p class="source-note">来源：[仅在存在事实、数据或外部基准时填写]</p>
+        <footer class="footer"><span>[组织或项目名称]</span><span class="page-no" data-page-number></span></footer>
+      </section>
+
+      <section class="slide" data-title="目标架构">
+        <h2 class="slide-title">[架构页的<span class="focus">三秒结论</span>]</h2>
+        <p class="subtitle">[说明架构边界以及存量系统与新增能力的关系]</p>
+        <div class="architecture-wrap">
+          <div class="architecture">
+            <div class="layer-name">[业务应用层]</div><div class="layer-content"><div class="node">[模块]</div><div class="node">[模块]</div><div class="node">[模块]</div><div class="node">[模块]</div></div>
+            <div class="layer-name focus-layer">[核心能力层]</div><div class="layer-content focus-layer"><div class="node">[模块]</div><div class="node">[模块]</div><div class="node">[模块]</div><div class="node">[模块]</div></div>
+            <div class="layer-name">[数据与平台层]</div><div class="layer-content"><div class="node">[模块]</div><div class="node">[模块]</div><div class="node">[模块]</div><div class="node">[模块]</div></div>
+            <div class="layer-name">[现场与系统层]</div><div class="layer-content"><div class="node">[模块]</div><div class="node">[模块]</div><div class="node">[模块]</div><div class="node">[模块]</div></div>
+          </div>
+          <aside class="governance"><h3>[贯穿式治理]</h3><div>[治理项]</div><div>[治理项]</div><div>[治理项]</div><div>[治理项]</div></aside>
+        </div>
+        <footer class="footer"><span>[组织或项目名称]</span><span class="page-no" data-page-number></span></footer>
+      </section>
+
+      <section class="slide" data-title="行动路径">
+        <h2 class="slide-title">[以<span class="focus">门槛或里程碑</span>控制推进节奏]</h2>
+        <p class="subtitle">[说明最终验收标准，而不是只描述活动]</p>
+        <div class="roadmap">
+          <article class="phase active-phase"><div class="step">PHASE 01</div><h3>[阶段一]</h3><ul><li>[关键动作]</li><li>[关键动作]</li><li>[关键动作]</li></ul><div class="output">输出：[可验收产物]</div></article>
+          <div class="gate"><b>GATE A</b></div>
+          <article class="phase"><div class="step">PHASE 02</div><h3>[阶段二]</h3><ul><li>[关键动作]</li><li>[关键动作]</li><li>[关键动作]</li></ul><div class="output">输出：[可验收产物]</div></article>
+          <div class="gate"><b>GATE B</b></div>
+          <article class="phase"><div class="step">PHASE 03</div><h3>[阶段三]</h3><ul><li>[关键动作]</li><li>[关键动作]</li><li>[关键动作]</li></ul><div class="output">输出：[可验收产物]</div></article>
+        </div>
+        <footer class="footer"><span>[组织或项目名称]</span><span class="page-no" data-page-number></span></footer>
+      </section>
+    </div>
+  </main>
+
+  <nav class="controls" aria-label="胶片控制">
+    <button type="button" id="prev" aria-label="上一页" title="上一页（←）">←</button>
+    <span class="count" id="count" aria-live="polite"></span>
+    <button type="button" id="next" aria-label="下一页" title="下一页（→）">→</button>
+    <button type="button" id="print" aria-label="打印或导出 PDF">打印</button>
+  </nav>
+
+  <script>
+    (() => {
+      const width = 1600;
+      const height = 900;
+      const deck = document.getElementById("deck");
+      const slides = [...document.querySelectorAll(".slide")];
+      const count = document.getElementById("count");
+      let current = Math.max(0, Math.min(slides.length - 1, Number(location.hash.slice(1)) - 1 || 0));
+
+      slides.forEach((slide, index) => {
+        const pageNo = slide.querySelector("[data-page-number]");
+        if (pageNo) pageNo.textContent = `${String(index + 1).padStart(2, "0")} / ${String(slides.length).padStart(2, "0")}`;
+      });
+
+      const fitDeck = () => {
+        const scale = Math.min(window.innerWidth / width, window.innerHeight / height);
+        deck.style.transform = `scale(${scale})`;
+      };
+
+      const show = (index) => {
+        current = (index + slides.length) % slides.length;
+        slides.forEach((slide, slideIndex) => slide.classList.toggle("active", slideIndex === current));
+        count.textContent = `${current + 1} / ${slides.length}`;
+        document.title = `${slides[current].dataset.title}｜演示文稿`;
+        history.replaceState(null, "", `#${current + 1}`);
+      };
+
+      document.getElementById("prev").addEventListener("click", () => show(current - 1));
+      document.getElementById("next").addEventListener("click", () => show(current + 1));
+      document.getElementById("print").addEventListener("click", () => window.print());
+      window.addEventListener("resize", fitDeck, { passive: true });
+      window.addEventListener("keydown", (event) => {
+        if (["ArrowRight", "PageDown", " "].includes(event.key)) { event.preventDefault(); show(current + 1); }
+        if (["ArrowLeft", "PageUp"].includes(event.key)) { event.preventDefault(); show(current - 1); }
+        if (event.key === "Home") show(0);
+        if (event.key === "End") show(slides.length - 1);
+      });
+
+      fitDeck();
+      show(current);
+    })();
+  </script>
+</body>
+</html>
