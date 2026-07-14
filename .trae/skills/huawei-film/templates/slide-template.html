@@ -1,536 +1,164 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>华为胶片模板 - 示例</title>
-  <style>
-:root {
-  --huawei-red: #990000;
-  --huawei-red-dark: #7A0000;
-  --text-primary: #333333;
-  --text-secondary: #595959;
-  --text-tertiary: #8C8C8C;
-  --text-white: #FFFFFF;
-  --bg-white: #FFFFFF;
-  --bg-light-gray: #F2F2F2;
-  --bg-gray: #E6E6E6;
-  --border-light: #D9D9D9;
-  --blue-light-bg: #E8EEF4;
-  --gray-light-bg: #F5F5F5;
-
-  --font-size-title: 44px;
-  --font-size-h1: 28px;
-  --font-size-h2: 24px;
-  --font-size-body: 20px;
-  --font-size-caption: 18px;
-  --font-size-data: 72px;
-  --font-size-cover-title: 56px;
-  --font-size-cover-sub: 28px;
-
-  --font-cn: "Microsoft YaHei", "微软雅黑", "PingFang SC", "Heiti SC", "SimHei", sans-serif;
-  --font-en: "Arial", "Helvetica Neue", Helvetica, sans-serif;
-
-  --slide-padding: 60px 80px;
-}
-
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
-html, body {
-  font-family: var(--font-cn);
-  color: var(--text-primary);
-  background: var(--bg-light-gray);
-  -webkit-font-smoothing: antialiased;
-}
-
-.slide {
-  width: 1920px;
-  height: 1080px;
-  background: var(--bg-white);
-  margin: 40px auto;
-  position: relative;
-  padding: var(--slide-padding);
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-}
-
-.logo-area {
-  position: absolute;
-  top: 30px;
-  right: 40px;
-  font-family: var(--font-en);
-  font-weight: bold;
-  font-size: 20px;
-  color: var(--huawei-red);
-  letter-spacing: 2px;
-}
-
-.slide-title {
-  font-family: var(--font-cn);
-  font-size: var(--font-size-title);
-  font-weight: bold;
-  color: var(--huawei-red);
-  text-align: left;
-  line-height: 1.3;
-  margin-bottom: 12px;
-}
-
-.title-divider {
-  width: 100%;
-  height: 3px;
-  background: linear-gradient(to right, var(--huawei-red), var(--huawei-red) 80px, var(--border-light) 80px);
-  margin-bottom: 48px;
-}
-
-.content-list {
-  list-style: none;
-  padding: 0;
-}
-
-.content-list > li {
-  font-size: var(--font-size-h1);
-  line-height: 1.6;
-  margin-bottom: 24px;
-  padding-left: 32px;
-  position: relative;
-  font-weight: 500;
-}
-
-.content-list > li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 16px;
-  width: 12px;
-  height: 12px;
-  background: var(--huawei-red);
-  border-radius: 2px;
-}
-
-.content-list li ul {
-  list-style: none;
-  margin-top: 12px;
-}
-
-.content-list li ul li {
-  font-size: var(--font-size-body);
-  color: var(--text-secondary);
-  margin-bottom: 10px;
-  padding-left: 24px;
-  font-weight: normal;
-}
-
-.content-list li ul li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 14px;
-  width: 8px;
-  height: 2px;
-  background: var(--text-secondary);
-  border-radius: 0;
-}
-
-.data-highlight {
-  font-family: var(--font-en);
-  font-size: var(--font-size-data);
-  font-weight: bold;
-  color: var(--huawei-red);
-  line-height: 1;
-}
-
-.slide-footer {
-  position: absolute;
-  bottom: 30px;
-  left: 80px;
-  right: 80px;
-  display: flex;
-  justify-content: space-between;
-  font-family: var(--font-en);
-  font-size: 14px;
-  color: var(--text-tertiary);
-  border-top: 1px solid var(--border-light);
-  padding-top: 12px;
-}
-
-/* ===== 封面页样式 ===== */
-.slide-cover {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  background: linear-gradient(135deg, var(--bg-white) 0%, var(--gray-light-bg) 100%);
-}
-
-.cover-badge {
-  display: inline-block;
-  background: var(--huawei-red);
-  color: var(--text-white);
-  padding: 8px 20px;
-  font-size: 18px;
-  font-family: var(--font-cn);
-  margin-bottom: 32px;
-  letter-spacing: 4px;
-}
-
-.cover-title {
-  font-size: var(--font-size-cover-title);
-  font-weight: bold;
-  color: var(--text-primary);
-  line-height: 1.3;
-  margin-bottom: 16px;
-}
-
-.cover-title .highlight {
-  color: var(--huawei-red);
-}
-
-.cover-subtitle {
-  font-size: var(--font-size-cover-sub);
-  color: var(--text-secondary);
-  margin-bottom: 60px;
-  font-weight: normal;
-}
-
-.cover-meta {
-  font-size: var(--font-size-body);
-  color: var(--text-secondary);
-  line-height: 2;
-}
-
-.cover-meta .label {
-  color: var(--text-tertiary);
-  margin-right: 12px;
-}
-
-/* ===== 目录页样式 ===== */
-.toc-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 32px;
-}
-
-.toc-item {
-  background: var(--gray-light-bg);
-  padding: 32px 36px;
-  border-left: 4px solid var(--huawei-red);
-  transition: all 0.2s;
-}
-
-.toc-item:hover {
-  background: var(--blue-light-bg);
-}
-
-.toc-number {
-  font-family: var(--font-en);
-  font-size: 48px;
-  font-weight: bold;
-  color: var(--huawei-red);
-  line-height: 1;
-  margin-bottom: 12px;
-}
-
-.toc-title {
-  font-size: var(--font-size-h1);
-  font-weight: bold;
-  color: var(--text-primary);
-  margin-bottom: 8px;
-}
-
-.toc-desc {
-  font-size: var(--font-size-caption);
-  color: var(--text-secondary);
-}
-
-/* ===== 数据页样式 ===== */
-.data-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 40px;
-  margin-top: 20px;
-}
-
-.data-card {
-  text-align: center;
-  padding: 48px 32px;
-  background: var(--gray-light-bg);
-  border-top: 4px solid var(--huawei-red);
-}
-
-.data-card .data-number {
-  font-family: var(--font-en);
-  font-size: var(--font-size-data);
-  font-weight: bold;
-  color: var(--huawei-red);
-  line-height: 1;
-  margin-bottom: 16px;
-}
-
-.data-card .data-unit {
-  font-size: var(--font-size-h2);
-  color: var(--huawei-red);
-  font-weight: normal;
-}
-
-.data-card .data-label {
-  font-size: var(--font-size-h2);
-  color: var(--text-primary);
-  margin-top: 16px;
-  font-weight: 500;
-}
-
-.data-card .data-desc {
-  font-size: var(--font-size-caption);
-  color: var(--text-secondary);
-  margin-top: 8px;
-}
-
-.data-source {
-  position: absolute;
-  bottom: 70px;
-  left: 80px;
-  font-size: 14px;
-  color: var(--text-tertiary);
-}
-
-/* ===== 两栏布局（左文右图） ===== */
-.two-column {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 60px;
-  align-items: start;
-}
-
-.chart-area {
-  background: var(--gray-light-bg);
-  border-radius: 4px;
-  padding: 40px;
-  min-height: 500px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-}
-
-.chart-placeholder {
-  text-align: center;
-  color: var(--text-tertiary);
-}
-
-.chart-placeholder svg {
-  width: 200px;
-  height: 200px;
-  margin-bottom: 20px;
-  opacity: 0.4;
-}
-
-.summary-box {
-  background: var(--blue-light-bg);
-  border-left: 4px solid var(--huawei-red);
-  padding: 24px 28px;
-  margin-top: 32px;
-}
-
-.summary-box .summary-label {
-  font-size: 14px;
-  color: var(--huawei-red);
-  font-weight: bold;
-  letter-spacing: 2px;
-  margin-bottom: 8px;
-}
-
-.summary-box .summary-text {
-  font-size: var(--font-size-h2);
-  color: var(--text-primary);
-  font-weight: 500;
-  line-height: 1.5;
-}
-
-/* ===== 结尾页 ===== */
-.slide-ending {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  background: var(--bg-white);
-}
-
-.ending-thanks {
-  font-size: 72px;
-  font-weight: bold;
-  color: var(--huawei-red);
-  margin-bottom: 32px;
-}
-
-.ending-message {
-  font-size: var(--font-size-h1);
-  color: var(--text-secondary);
-  margin-bottom: 48px;
-}
-
-.ending-contact {
-  font-size: var(--font-size-body);
-  color: var(--text-tertiary);
-  line-height: 2;
-}
-
-  </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>华为风格胶片模板</title>
+  <link rel="stylesheet" href="../resources/huawei-film-theme.css">
 </head>
 <body>
+  <!--
+    Brand safety:
+    1. Insert only an authorized logo asset. Do not type or redraw the HUAWEI logo.
+    2. Add confidentiality markings only when supplied by an approved template or owner.
+    3. Replace all bracketed placeholders before delivery.
+  -->
 
-  <!-- 封面页 -->
   <section class="slide slide-cover">
-    <div class="logo-area">HUAWEI</div>
-    <div class="cover-badge">汇 报 材 料</div>
-    <h1 class="cover-title">
-      <span class="highlight">数字化转型</span>解决方案<br>
-      业务价值与实施路径
-    </h1>
-    <p class="cover-subtitle">Digital Transformation Solution</p>
+    <div class="brand-logo-slot">[授权Logo区域，可删除]</div>
+    <div class="cover-rule"></div>
+    <p class="eyebrow">汇报材料</p>
+    <h1 class="cover-title">AI赋能质量与生产优化方案</h1>
+    <p class="cover-subtitle">从单点模型走向可运营业务闭环</p>
     <div class="cover-meta">
-      <p><span class="label">汇 报 人：</span>XXX</p>
-      <p><span class="label">汇报日期：</span>2025年XX月XX日</p>
-      <p><span class="label">文档密级：</span>Huawei Confidential</p>
+      <div>汇报组织：[组织名称]</div>
+      <div>汇报日期：[YYYY年MM月DD日]</div>
     </div>
-    <div class="slide-footer">
-      <span>HUAWEI TECHNOLOGIES CO., LTD.</span>
-      <span>Huawei Confidential</span>
-    </div>
+    <footer class="slide-footer">
+      <span>[组织/项目名称]</span>
+      <span>01</span>
+    </footer>
   </section>
 
-  <!-- 目录页 -->
   <section class="slide">
-    <div class="logo-area">HUAWEI</div>
-    <h2 class="slide-title">目录 | Contents</h2>
-    <div class="title-divider"></div>
-    <div class="toc-grid">
-      <div class="toc-item">
-        <div class="toc-number">01</div>
-        <div class="toc-title">行业趋势与痛点分析</div>
-        <div class="toc-desc">数字化转型的必然性与核心挑战</div>
-      </div>
-      <div class="toc-item">
-        <div class="toc-number">02</div>
-        <div class="toc-title">解决方案总体架构</div>
-        <div class="toc-desc">云-管-端-芯全栈协同技术体系</div>
-      </div>
-      <div class="toc-item">
-        <div class="toc-number">03</div>
-        <div class="toc-title">核心价值与差异化优势</div>
-        <div class="toc-desc">三大维度提升企业核心竞争力</div>
-      </div>
-      <div class="toc-item">
-        <div class="toc-number">04</div>
-        <div class="toc-title">实施路径与成功案例</div>
-        <div class="toc-desc">分阶段落地策略与标杆实践</div>
-      </div>
+    <div class="brand-logo-slot">[授权Logo区域，可删除]</div>
+    <h2 class="slide-title">质量波动与换型损失是首轮诊断需要验证的高价值问题</h2>
+    <div class="title-rule"></div>
+    <p class="takeaway">先建立客户基线，再判断AI是否是最合适的干预方式</p>
+
+    <div class="grid-3">
+      <article class="module is-focus">
+        <h3>质量波动</h3>
+        <p>基线：[缺陷率/返工率待补充]<br>来源：[客户数据源]</p>
+      </article>
+      <article class="module">
+        <h3>换型损失</h3>
+        <p>基线：[换型周期待补充]<br>来源：[生产记录]</p>
+      </article>
+      <article class="module">
+        <h3>运营约束</h3>
+        <p>明确数据质量、流程责任人与现场处置机制</p>
+      </article>
     </div>
-    <div class="slide-footer">
-      <span>HUAWEI TECHNOLOGIES CO., LTD.</span>
-      <span>Huawei Confidential</span>
-    </div>
+
+    <p class="source-note">数据口径与来源：[待客户确认]</p>
+    <footer class="slide-footer">
+      <span>[组织/项目名称]</span>
+      <span>02</span>
+    </footer>
   </section>
 
-  <!-- 内容页示例：核心数据 -->
   <section class="slide">
-    <div class="logo-area">HUAWEI</div>
-    <h2 class="slide-title">市场份额连续三年领先，年增长率达23%</h2>
-    <div class="title-divider"></div>
-    <div class="data-grid">
-      <div class="data-card">
-        <div class="data-number">67<span class="data-unit">%</span></div>
-        <div class="data-label">运维成本降低</div>
-        <div class="data-desc">智能化自动化替代人工操作</div>
-      </div>
-      <div class="data-card">
-        <div class="data-number">3.5<span class="data-unit">x</span></div>
-        <div class="data-label">业务处理能力提升</div>
-        <div class="data-desc">支撑并发从5万跃升至12万</div>
-      </div>
-      <div class="data-card">
-        <div class="data-number">99.99<span class="data-unit">%</span></div>
-        <div class="data-label">系统可用性</div>
-        <div class="data-desc">全年计划外停机<5分钟</div>
-      </div>
+    <div class="brand-logo-slot">[授权Logo区域，可删除]</div>
+    <h2 class="slide-title">感知—模型—执行—反馈闭环决定AI能否转化为生产改进</h2>
+    <div class="title-rule"></div>
+
+    <div class="flow">
+      <article class="flow-step">
+        <span class="flow-index">01</span>
+        <h3>感知</h3>
+        <p class="muted">采集质量、设备与工艺数据</p>
+      </article>
+      <article class="flow-step">
+        <span class="flow-index">02</span>
+        <h3>模型</h3>
+        <p class="muted">识别异常并输出可信结果</p>
+      </article>
+      <article class="flow-step">
+        <span class="flow-index">03</span>
+        <h3>执行</h3>
+        <p class="muted">嵌入复核、处置与工艺调整</p>
+      </article>
+      <article class="flow-step">
+        <span class="flow-index">04</span>
+        <h3>反馈</h3>
+        <p class="muted">沉淀结果并持续校准模型</p>
+      </article>
     </div>
-    <div class="data-source">数据来源：华为实验室测试报告，2024年度</div>
-    <div class="slide-footer">
-      <span>HUAWEI TECHNOLOGIES CO., LTD.</span>
-      <span>Huawei Confidential</span>
+
+    <div class="summary">
+      <span class="summary-label">3秒摘要</span>
+      把模型输出嵌入现场处置流程，而不是停留在独立看板。
     </div>
+    <footer class="slide-footer">
+      <span>[组织/项目名称]</span>
+      <span>03</span>
+    </footer>
   </section>
 
-  <!-- 内容页示例：左文右图 -->
   <section class="slide">
-    <div class="logo-area">HUAWEI</div>
-    <h2 class="slide-title">云-管-端-芯四层架构，构建全栈技术能力</h2>
-    <div class="title-divider"></div>
-    <div class="two-column">
-      <div>
-        <ul class="content-list">
-          <li>云：统一云平台，弹性伸缩
-            <ul>
-              <li>混合云架构，资源利用率提升40%</li>
-              <li>容器化部署，上线周期从月到天</li>
-            </ul>
-          </li>
-          <li>管：智能网络，极速互联
-            <ul>
-              <li>全IP网络，端到端时延<10ms</li>
-              <li>智能调度，带宽利用率优化35%</li>
-            </ul>
-          </li>
-          <li>端：多元终端，无缝协同
-            <ul>
-              <li>统一接入框架，支持千类终端</li>
-            </ul>
-          </li>
-          <li>芯：自研芯片，性能倍增
-            <ul>
-              <li>算力密度提升2倍，能效比领先</li>
-            </ul>
-          </li>
-        </ul>
-        <div class="summary-box">
-          <div class="summary-label">核 心 结 论</div>
-          <div class="summary-text">四层协同实现端到端性能最优，总体拥有成本（TCO）降低30%</div>
-        </div>
-      </div>
-      <div class="chart-area">
-        <div class="chart-placeholder">
-          <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="40" y="40" width="120" height="120" stroke="#990000" stroke-width="3" fill="none"/>
-            <rect x="60" y="60" width="80" height="80" stroke="#333" stroke-width="2" fill="none"/>
-            <rect x="80" y="80" width="40" height="40" fill="#990000" opacity="0.3"/>
-            <line x1="100" y1="10" x2="100" y2="190" stroke="#999" stroke-width="1" stroke-dasharray="4"/>
-            <line x1="10" y1="100" x2="190" y2="100" stroke="#999" stroke-width="1" stroke-dasharray="4"/>
-            <text x="100" y="105" text-anchor="middle" fill="#990000" font-size="16" font-weight="bold">架构图</text>
-          </svg>
-          <p>架构图区域</p>
-          <p style="margin-top:8px;font-size:14px;">（此处放置组网/架构示意图）</p>
-        </div>
-      </div>
+    <div class="brand-logo-slot">[授权Logo区域，可删除]</div>
+    <h2 class="slide-title">试点应同时验证模型指标、流程指标和运营责任</h2>
+    <div class="title-rule"></div>
+
+    <div class="grid-3">
+      <article class="module is-focus">
+        <div class="metric">[目标]</div>
+        <div class="metric-label">模型指标</div>
+        <p>准确率、误报率、漏报率及测试集口径</p>
+      </article>
+      <article class="module">
+        <div class="metric">[目标]</div>
+        <div class="metric-label">流程指标</div>
+        <p>处理周期、复核工作量、返工或停线影响</p>
+      </article>
+      <article class="module">
+        <div class="metric">[责任人]</div>
+        <div class="metric-label">运营指标</div>
+        <p>数据、模型与业务流程的持续运营责任</p>
+      </article>
     </div>
-    <div class="slide-footer">
-      <span>HUAWEI TECHNOLOGIES CO., LTD.</span>
-      <span>Huawei Confidential</span>
-    </div>
+
+    <p class="source-note">所有目标值需由客户基线和验收口径共同确定，不使用无来源示例数据。</p>
+    <footer class="slide-footer">
+      <span>[组织/项目名称]</span>
+      <span>04</span>
+    </footer>
   </section>
 
-  <!-- 结尾页 -->
-  <section class="slide slide-ending">
-    <div class="logo-area">HUAWEI</div>
-    <div class="ending-thanks">THANKS</div>
-    <p class="ending-message">感谢聆听，期待与您携手共创数字化未来</p>
-    <div class="ending-contact">
-      <p>华为技术有限公司 | HUAWEI TECHNOLOGIES CO., LTD.</p>
-    </div>
-    <div class="slide-footer">
-      <span></span>
-      <span>Huawei Confidential</span>
-    </div>
-  </section>
+  <section class="slide">
+    <div class="brand-logo-slot">[授权Logo区域，可删除]</div>
+    <h2 class="slide-title">先冻结场景、基线与验收口径，再进入试点建设</h2>
+    <div class="title-rule"></div>
+    <p class="takeaway">本次会议需要确认四项启动条件</p>
 
+    <div class="grid-4">
+      <article class="module is-focus">
+        <h3>试点场景</h3>
+        <p>[场景名称]</p>
+      </article>
+      <article class="module">
+        <h3>业务负责人</h3>
+        <p>[姓名/角色]</p>
+      </article>
+      <article class="module">
+        <h3>数据负责人</h3>
+        <p>[姓名/角色]</p>
+      </article>
+      <article class="module">
+        <h3>诊断窗口</h3>
+        <p>[周期待确认]</p>
+      </article>
+    </div>
+
+    <div class="summary">
+      <span class="summary-label">决策请求</span>
+      确认以上四项，并安排业务、数据与技术团队共同完成现状诊断。
+    </div>
+    <footer class="slide-footer">
+      <span>[组织/项目名称]</span>
+      <span>05</span>
+    </footer>
+  </section>
 </body>
 </html>
