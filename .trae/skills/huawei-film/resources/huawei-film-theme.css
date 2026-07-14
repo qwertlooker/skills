@@ -1,0 +1,211 @@
+/* 华为胶片核心配色变量 - 浅色主题 */
+:root {
+  /* 主色体系 */
+  --huawei-red: #990000;        /* R153 G0 B0 - 华为红，用于标题、核心强调 */
+  --huawei-red-dark: #7A0000;   /* 深红，用于hover状态 */
+  --huawei-red-light: #B33333;  /* 浅红，用于装饰 */
+
+  /* 文字色 */
+  --text-primary: #333333;      /* R51 G51 B51 - 正文主色 */
+  --text-secondary: #595959;    /* R89 G89 B89 - 二级正文/注释 */
+  --text-tertiary: #8C8C8C;     /* R140 G140 B140 - 辅助说明 */
+  --text-white: #FFFFFF;        /* 反白文字（深色背景用） */
+
+  /* 背景色 */
+  --bg-white: #FFFFFF;          /* 页面底色 */
+  --bg-light-gray: #F2F2F2;     /* R242 G242 B242 - 区块底色/分割线 */
+  --bg-gray: #E6E6E6;           /* 浅灰区块 */
+  --bg-dark: #1A1A1A;           /* R26 G26 B26 - 深色主题背景 */
+
+  /* 分割线 */
+  --border-light: #D9D9D9;
+  --border-red: #990000;
+
+  /* 辅助配色组 - 商务蓝 */
+  --blue-primary: #003366;
+  --blue-secondary: #4D79A5;
+  --blue-light-bg: #E8EEF4;
+
+  /* 辅助配色组 - 科技灰 */
+  --gray-primary: #404040;
+  --gray-secondary: #808080;
+  --gray-light-bg: #F5F5F5;
+
+  /* 辅助配色组 - 活力橙（仅用于数据强调） */
+  --orange-primary: #CC6600;
+  --orange-secondary: #FF9933;
+  --orange-light-bg: #FFF5E6;
+
+  /* 辅助配色组 - 自然绿 */
+  --green-primary: #336633;
+  --green-secondary: #669966;
+  --green-light-bg: #EBF0EB;
+
+  /* 辅助配色组 - 优雅紫 */
+  --purple-primary: #4D3366;
+  --purple-secondary: #7A5C99;
+  --purple-light-bg: #EDE8F2;
+
+  /* 字号规范 (Web端以px为单位) */
+  --font-size-title: 44px;      /* 32pt ≈ 44px - 中文标题 */
+  --font-size-title-en: 47px;   /* 35pt ≈ 47px - 英文标题 */
+  --font-size-h1: 29px;         /* 22pt ≈ 29px - 一级正文 */
+  --font-size-h2: 24px;         /* 18pt ≈ 24px - 二级子目录 */
+  --font-size-body: 24px;       /* 18pt ≈ 24px - 正文 */
+  --font-size-caption: 20px;    /* 15pt ≈ 20px - 注释 */
+  --font-size-data: 72px;       /* 54pt ≈ 72px - 核心数据大字 */
+
+  /* 字体 */
+  --font-cn: "Microsoft YaHei", "微软雅黑", "PingFang SC", "Heiti SC", "SimHei", sans-serif;
+  --font-en: "Arial", "FrutigerNext LT", "Helvetica Neue", Helvetica, sans-serif;
+
+  /* 间距 */
+  --slide-padding: 60px 80px;
+  --section-gap: 32px;
+  --element-gap: 16px;
+}
+
+/* 深色主题 */
+[data-theme="dark"] {
+  --text-primary: #CCCCCC;      /* R204 G204 B204 */
+  --text-secondary: #999999;
+  --text-tertiary: #666666;
+  --bg-white: #1A1A1A;
+  --bg-light-gray: #2A2A2A;
+  --bg-gray: #333333;
+  --border-light: #404040;
+}
+
+/* 基础样式 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  font-family: var(--font-cn);
+  color: var(--text-primary);
+  background: var(--bg-light-gray);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 幻灯片页面 - 16:9 */
+.slide {
+  width: 1920px;
+  height: 1080px;
+  background: var(--bg-white);
+  margin: 40px auto;
+  position: relative;
+  padding: var(--slide-padding);
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+/* Logo位置（右上角） */
+.logo-area {
+  position: absolute;
+  top: 30px;
+  right: 40px;
+  font-family: var(--font-en);
+  font-weight: bold;
+  font-size: 18px;
+  color: var(--huawei-red);
+}
+
+/* 标题区 */
+.slide-title {
+  font-family: var(--font-cn);
+  font-size: var(--font-size-title);
+  font-weight: bold;
+  color: var(--huawei-red);
+  text-align: left;
+  line-height: 1.3;
+  margin-bottom: 12px;
+}
+
+/* 分割线 */
+.title-divider {
+  width: 100%;
+  height: 2px;
+  background: var(--border-light);
+  margin-bottom: 40px;
+}
+
+/* 正文要点 */
+.content-list {
+  list-style: none;
+  padding: 0;
+}
+
+.content-list li {
+  font-size: var(--font-size-h1);
+  line-height: 1.6;
+  margin-bottom: 20px;
+  padding-left: 28px;
+  position: relative;
+}
+
+.content-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 14px;
+  width: 10px;
+  height: 10px;
+  background: var(--huawei-red);
+  border-radius: 50%;
+}
+
+.content-list li ul {
+  list-style: none;
+  margin-top: 10px;
+}
+
+.content-list li ul li {
+  font-size: var(--font-size-body);
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  padding-left: 20px;
+}
+
+.content-list li ul li::before {
+  width: 6px;
+  height: 6px;
+  background: var(--text-secondary);
+  top: 14px;
+}
+
+/* 核心数据大字 */
+.data-highlight {
+  font-family: var(--font-en);
+  font-size: var(--font-size-data);
+  font-weight: bold;
+  color: var(--huawei-red);
+  line-height: 1;
+}
+
+/* 页脚 */
+.slide-footer {
+  position: absolute;
+  bottom: 30px;
+  left: 80px;
+  right: 80px;
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-en);
+  font-size: 14px;
+  color: var(--text-tertiary);
+}
+
+/* 打印样式 */
+@media print {
+  body {
+    background: white;
+  }
+  .slide {
+    margin: 0;
+    page-break-after: always;
+    box-shadow: none;
+  }
+}
