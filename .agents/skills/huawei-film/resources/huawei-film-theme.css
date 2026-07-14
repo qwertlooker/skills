@@ -56,6 +56,7 @@ body {
 body {
   padding: 40px 0;
   overflow-x: hidden;
+  counter-reset: slide;
 }
 
 .slide {
@@ -67,6 +68,12 @@ body {
   overflow: hidden;
   background: var(--surface);
   box-shadow: 0 4px 18px rgb(0 0 0 / 10%);
+  counter-increment: slide;
+}
+
+body[data-debug="true"] .slide {
+  overflow: visible;
+  outline: 2px dashed var(--accent-orange);
 }
 
 .slide[data-theme="dark"] {
@@ -103,7 +110,7 @@ body {
 .slide-title {
   max-width: 1540px;
   margin: 0;
-  color: var(--text-primary);
+  color: var(--text-primary); /* Keep titles dark; use red for selective point emphasis. */
   font-size: var(--slide-title);
   font-weight: 700;
   line-height: 1.25;
@@ -203,10 +210,23 @@ body {
 }
 
 .flow {
+  --flow-columns: 4;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--flow-columns), minmax(0, 1fr));
   gap: var(--flow-gap);
   align-items: stretch;
+}
+
+.flow-3 {
+  --flow-columns: 3;
+}
+
+.flow-4 {
+  --flow-columns: 4;
+}
+
+.flow-5 {
+  --flow-columns: 5;
 }
 
 .flow-step {
@@ -214,6 +234,19 @@ body {
   padding: 28px 26px;
   border: 1px solid var(--divider);
   background: var(--surface);
+}
+
+.flow-step h3 {
+  margin: 0 0 8px;
+  font-size: var(--body);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.flow-step p {
+  margin: 0;
+  font-size: var(--label);
+  line-height: 1.55;
 }
 
 .flow-step:not(:last-child)::after {
@@ -266,6 +299,10 @@ body {
   font-size: var(--source);
 }
 
+.page-number::before {
+  content: counter(slide, decimal-leading-zero);
+}
+
 .slide-cover {
   display: flex;
   flex-direction: column;
@@ -305,8 +342,10 @@ body {
   position: absolute;
   bottom: 70px;
   left: var(--slide-padding-x);
+  right: var(--slide-padding-x);
   color: var(--text-muted);
   font-size: var(--source);
+  line-height: 1.35;
 }
 
 .slide-shell {
