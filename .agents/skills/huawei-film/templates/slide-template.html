@@ -12,6 +12,8 @@
     1. Insert only an authorized logo asset. Do not type or redraw the HUAWEI logo.
     2. Add confidentiality markings only when supplied by an approved template or owner.
     3. Replace all bracketed placeholders before delivery.
+    4. If this HTML file is moved, adjust the stylesheet path above. For a standalone file,
+       inline the contents of huawei-film-theme.css into a <style> element.
   -->
 
   <section class="slide slide-cover">
@@ -160,5 +162,34 @@
       <span>05</span>
     </footer>
   </section>
+
+  <script>
+    (() => {
+      const designWidth = 1920;
+      const designHeight = 1080;
+      const viewportGutter = 32;
+      const root = document.documentElement;
+      const slides = [...document.querySelectorAll(".slide")];
+
+      slides.forEach((slide) => {
+        if (slide.parentElement?.classList.contains("slide-shell")) return;
+        const shell = document.createElement("div");
+        shell.className = "slide-shell";
+        slide.parentNode.insertBefore(shell, slide);
+        shell.appendChild(slide);
+      });
+
+      const fitSlides = () => {
+        const scale = Math.min(1, Math.max(0.1, (window.innerWidth - viewportGutter) / designWidth));
+        root.style.setProperty("--preview-scale", String(scale));
+        root.style.setProperty("--preview-width", `${designWidth * scale}px`);
+        root.style.setProperty("--preview-height", `${designHeight * scale}px`);
+        root.style.setProperty("--preview-gap", `${40 * scale}px`);
+      };
+
+      window.addEventListener("resize", fitSlides, { passive: true });
+      fitSlides();
+    })();
+  </script>
 </body>
 </html>
