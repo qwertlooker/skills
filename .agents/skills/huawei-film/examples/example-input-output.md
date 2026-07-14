@@ -57,6 +57,7 @@
 
 ## HTML输出要求
 
+- 完整HTML产物参见 `templates/slide-template.html`；本示例重点展示从输入到页面结构的推导，避免与模板重复维护。
 - 使用 `resources/huawei-film-theme.css`。
 - 使用16:9页面、白色主背景和少量`#C7000B`强调。
 - 不显示“HUAWEI”文字Logo，不自动写入`Huawei Confidential`。
