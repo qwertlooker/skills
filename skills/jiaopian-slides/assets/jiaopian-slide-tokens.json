@@ -1,0 +1,102 @@
+{
+  "meta": {
+    "name": "Jiaopian-style presentation defaults",
+    "status": "distilled practical defaults, not an official Jiaopian template",
+    "version": "1.3.0",
+    "checked": "2026-07-14"
+  },
+  "canvas": {
+    "aspectRatio": "16:9",
+    "widthInches": 13.333,
+    "heightInches": 7.5,
+    "background": "#FFFFFF",
+    "softBackground": "#F7F7F7",
+    "marginXInches": 0.72,
+    "marginTopInches": 0.42,
+    "marginBottomInches": 0.4
+  },
+  "colors": {
+    "jiaopianRed": "#C7000B",
+    "legacyTemplateRed": "#990000",
+    "textPrimary": "#231815",
+    "textSecondary": "#595757",
+    "muted": "#9FA0A0",
+    "divider": "#DCDDDD",
+    "white": "#FFFFFF",
+    "rose": "#C40054",
+    "deepRed": "#7F0001",
+    "orange": "#ED6D00",
+    "yellow": "#FCC800",
+    "green": "#62B230",
+    "cyan": "#30B5C5"
+  },
+  "fonts": {
+    "defaultChinese": "Microsoft YaHei",
+    "defaultLatinAndNumbers": "Arial",
+    "htmlMixedScriptStack": "Arial, \"Microsoft YaHei\", \"微软雅黑\", sans-serif",
+    "pptxRunFonts": {
+      "latin": "Arial",
+      "eastAsian": "Microsoft YaHei",
+      "complexScript": "Arial"
+    },
+    "templateSpecificChinese": [
+      "FZLTHJW--GB1-0",
+      "FZLanTingHei-R-GBK",
+      "方正兰亭黑简体"
+    ],
+    "templateSpecificLatin": [
+      "Huawei Sans"
+    ]
+  },
+  "typeScalePt": {
+    "coverTitle": 42,
+    "slideTitle": 32,
+    "sectionTitle": 26,
+    "body": 20,
+    "label": 16,
+    "source": 10
+  },
+  "typeScaleHtmlPx": {
+    "stage": "1600x900",
+    "coverTitle": 56,
+    "slideTitle": 43,
+    "sectionTitle": 35,
+    "body": 27,
+    "label": 22,
+    "source": 14,
+    "minimumCoreText": 21
+  },
+  "geometry": {
+    "cornerRadius": 0.04,
+    "lineWidthPt": 1,
+    "accentLineWidthPt": 2,
+    "moduleGapInches": 0.22
+  },
+  "output": {
+    "defaultFormat": "pptx",
+    "htmlOnlyWhenExplicit": true,
+    "pptxNativeEditable": true,
+    "convertHtmlToPptx": false
+  },
+  "pptxVisualChrome": {
+    "defaultTitleSystem": "ict-business-red-title",
+    "defaultCoverMode": "light-contextual-image",
+    "topRedRule": false,
+    "titleUnderline": false,
+    "redPageNumber": false,
+    "grayStructuralLines": true,
+    "redBudgetModel": "one title system plus one semantically related content-emphasis group",
+    "titleCountsAsContentGroup": false,
+    "maxSupportingRedGroupsPerSlide": 1,
+    "coverRedBlob": false
+  },
+  "rules": {
+    "maxSemanticColorsPerSlide": 4,
+    "maxVisibleTextLevels": 3,
+    "maxPeerGroupsPreferred": 4,
+    "maxLinearProcessNodesPreferred": 7,
+    "redUsage": "full red title by default plus one related content emphasis group; never scattered decorative chrome",
+    "generatedImagery": "conceptual cover or divider only; never customer, site, product, or result evidence",
+    "defaultMode": "light"
+  }
+}

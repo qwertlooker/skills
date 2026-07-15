@@ -1,0 +1,72 @@
+{
+  "meta": {
+    "name": "Jiaopian-style PPTX layout registry",
+    "version": "1.1.0",
+    "status": "practical layouts distilled from public mainslides; not an official template"
+  },
+  "global": {
+    "aspectRatio": "16:9",
+    "titleSystem": "red takeaway title, no top strip, no title underline",
+    "structuralLineColor": "#DCDDDD",
+    "pageNumberColor": "#9FA0A0",
+    "footerRuleColor": "#DCDDDD",
+    "defaultFormat": "pptx"
+  },
+  "layouts": [
+    {
+      "id": "cover-image-or-technical-visual",
+      "use": "cover",
+      "structure": "light or high-key contextual image by default; 40-55% title and subtitle with intentional negative space; dark cover only for stage, exhibition, or explicit direction",
+      "red": "title or one small focal cue",
+      "avoid": "giant red blob, multiple decorative lines, producer-facing style label"
+    },
+    {
+      "id": "image-claim-key-figures",
+      "use": "company, customer, market, or outcome overview",
+      "structure": "one evidence-bearing image, one claim, three to five key figures or facts",
+      "red": "title and/or decisive figures; gray for icons and separators"
+    },
+    {
+      "id": "trend-evolution",
+      "use": "technology evolution, maturity, or phased change",
+      "structure": "one horizontal progression with a clear direction and an emphasized destination",
+      "red": "destination, inflection, or current stage; not every connector"
+    },
+    {
+      "id": "loop-operating-model",
+      "use": "feedback, ecosystem, governance, or dual-engine model",
+      "structure": "one loop or paired-loop mechanism plus concise inputs, outputs, and implications",
+      "red": "active loop, selected engine, or key conversion point"
+    },
+    {
+      "id": "layered-architecture",
+      "use": "solution or target architecture",
+      "structure": "three to five horizontal layers with a narrow cross-cutting governance column when needed",
+      "red": "one focal layer or selected node; gray borders and connectors"
+    },
+    {
+      "id": "evidence-matrix",
+      "use": "comparison, coverage map, curriculum, capability, or scope",
+      "structure": "compact matrix with one highlighted row, column, or cell group",
+      "red": "highlighted evidence only; no red grid lines"
+    },
+    {
+      "id": "phased-roadmap",
+      "use": "implementation path and decision gates",
+      "structure": "three or four stages with explicit outputs and gates",
+      "red": "current or recommended stage only; other stages remain dark or gray"
+    },
+    {
+      "id": "section-divider-large-number",
+      "use": "section divider or major transition",
+      "structure": "one relevant image or illustration, one oversized gray section number, one short section name, and at most three short subitems",
+      "red": "selected subitem or one image focal cue"
+    },
+    {
+      "id": "customer-case-evidence",
+      "use": "customer case, proof, pilot result, or reference architecture outcome",
+      "structure": "challenge-action-outcome, timeline, or baseline-result spine with real imagery and dated sources",
+      "red": "result family, key milestone, or decisive evidence group; never invented impact"
+    }
+  ]
+}
