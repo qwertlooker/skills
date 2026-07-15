@@ -26,7 +26,7 @@ const requireText = (needle, message) => {
 
 requireText('<html lang="zh-CN">', "Document language must be zh-CN.");
 requireText('name="viewport"', "Viewport metadata is missing.");
-requireText("--huawei-red: #c7000b", "Default Huawei red token must be #C7000B.");
+requireText("--jiaopian-red: #c7000b", "Default Jiaopian red token must be #C7000B.");
 requireText('font-family: Arial, "Microsoft YaHei", "微软雅黑", sans-serif', "Mixed-script font stack must put Arial before Microsoft YaHei.");
 requireText("fitDeck", "Responsive deck fitting is missing.");
 requireText("@media print", "Print/PDF stylesheet is missing.");
@@ -47,17 +47,17 @@ if (titles.length < contentSlideCount) {
 }
 
 for (const forbidden of [
-  "Huawei-style presentation",
-  "华为风格模板",
-  ">HUAWEI<",
-  "Huawei Confidential",
-  "Huawei Proprietary",
+  "Jiaopian-style presentation",
+  "胶片风格模板",
+  ">JIAOPIAN<",
+  "Jiaopian Confidential",
+  "Jiaopian Proprietary",
 ]) {
-  if (html.includes(forbidden)) errors.push(`Producer-facing or unauthorized brand text remains: ${forbidden}`);
+  if (html.includes(forbidden)) errors.push(`Producer-facing or unauthorized jiaopian text remains: ${forbidden}`);
 }
 
 if (/style="[^"]*(?:#c7000b|rgb\(199\s*,\s*0\s*,\s*11\))/i.test(html)) {
-  errors.push("Inline hard-coded Huawei red found; use a class and --huawei-red.");
+  errors.push("Inline hard-coded Jiaopian red found; use a class and --jiaopian-red.");
 }
 
 if (/class="[^"]*\btop-rule\b/.test(html) || /\.top-rule\s*\{/.test(html)) {
@@ -93,4 +93,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log(`Validation passed: ${slides.length} slides; font, density, brand, navigation, print, and page-number checks passed.`);
+console.log(`Validation passed: ${slides.length} slides; font, density, jiaopian, navigation, print, and page-number checks passed.`);

@@ -74,7 +74,7 @@ for (let index = 0; index < slides.length; index += 1) {
     errors.push(`Slide ${slideNo}: Chinese text has no explicit Microsoft YaHei East Asian mapping.`);
   }
 
-  for (const forbidden of ["Huawei-style presentation", "华为风格模板", "Huawei Confidential", "Huawei Proprietary"]) {
+  for (const forbidden of ["Jiaopian-style presentation", "胶片风格模板", "Jiaopian Confidential", "Jiaopian Proprietary"]) {
     if (text.includes(forbidden)) errors.push(`Slide ${slideNo}: producer-facing or unauthorized text remains: ${forbidden}`);
   }
 
@@ -95,7 +95,7 @@ for (let index = 0; index < slides.length; index += 1) {
       return inTitleZone && titleSized && fullRed;
     });
     if (!hasFullRedTitle) {
-      errors.push(`Slide ${slideNo}: no full Huawei-red takeaway title found for title system ${titleSystem}. Use --title-system=neutral-technical only when that route was selected before authoring.`);
+      errors.push(`Slide ${slideNo}: no full Jiaopian-red takeaway title found for title system ${titleSystem}. Use --title-system=neutral-technical only when that route was selected before authoring.`);
     }
   }
   for (const shape of shapes) {

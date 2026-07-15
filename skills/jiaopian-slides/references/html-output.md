@@ -27,12 +27,12 @@ Use this route only when the user explicitly requests HTML.
 ## Production rules
 
 - Deliver one self-contained HTML file by default.
-- Keep `#C7000B` in the `--huawei-red` token and reference the variable through classes. Do not scatter hard-coded red values or inline styles.
+- Keep `#C7000B` in the `--jiaopian-red` token and reference the variable through classes. Do not scatter hard-coded red values or inline styles.
 - Do not add a persistent top red strip or title underline. Use either a red title or a dark title with one red focal phrase/object; do not stack both systems with decorative rules.
 - Page numbers must be generated from the actual slide count.
 - Keep arrow-key, Page Up/Down, Home/End, responsive fitting, and print-to-PDF behavior.
-- Omit the Huawei logo when no authorized asset is supplied. Do not create a text imitation or visible logo placeholder.
-- The final visible deck must not contain “Huawei-style presentation,” “华为风格模板,” “仅供参考,” layout names, or implementation instructions unless the user explicitly wants that wording for the audience.
+- Omit the Jiaopian logo when no authorized asset is supplied. Do not create a text imitation or visible logo placeholder.
+- The final visible deck must not contain “Jiaopian-style presentation,” “胶片风格模板,” “仅供参考,” layout names, or implementation instructions unless the user explicitly wants that wording for the audience.
 
 ## Delivery contract
 

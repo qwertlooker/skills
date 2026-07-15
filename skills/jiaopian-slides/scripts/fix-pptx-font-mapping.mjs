@@ -22,7 +22,7 @@ if (input === output) {
   process.exit(2);
 }
 
-const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "huawei-pptx-fonts-"));
+const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "jiaopian-pptx-fonts-"));
 const replaceTypeface = (tag, family) => {
   if (/\btypeface="[^"]*"/.test(tag)) {
     return tag.replace(/\btypeface="[^"]*"/, `typeface="${family}"`);

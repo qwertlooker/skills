@@ -1,20 +1,20 @@
-# Huawei-style slide design system
+# Jiaopian-style slide design system
 
 ## Authority model
 
 Use this priority order:
 
 1. User-supplied approved PPTX template or master
-2. User-supplied Huawei reference deck for the same business unit and scenario
-3. Official public Huawei VI or co-branding guidance
-4. Official public Huawei presentation examples
+2. User-supplied Jiaopian reference deck for the same business unit and scenario
+3. Official public Jiaopian VI or co-jiaopian guidance
+4. Official public Jiaopian presentation examples
 5. Practical defaults in this document
 
-Do not present levels 4–5 as universal Huawei corporate rules.
+Do not present levels 4–5 as universal Jiaopian corporate rules.
 
 ## Core visual character
 
-Huawei-style slides are structured, restrained, technical, and outcome-oriented. Their recognizable quality comes from a clear information hierarchy, flat diagrams, compact evidence, disciplined alignment, and selective red emphasis—not from filling the page with red.
+Jiaopian-style slides are structured, restrained, technical, and outcome-oriented. Their recognizable quality comes from a clear information hierarchy, flat diagrams, compact evidence, disciplined alignment, and selective red emphasis—not from filling the page with red.
 
 ### Canvas and composition
 
@@ -27,7 +27,7 @@ Huawei-style slides are structured, restrained, technical, and outcome-oriented.
 
 ### Color
 
-Official public VI guidance identifies Huawei red as Pantone 185C, `RGB 199/0/11`, `#C7000B`. It explicitly recommends limited use to create a “point of red.” Use this as the default accent.
+Official public VI guidance identifies Jiaopian red as Pantone 185C, `RGB 199/0/11`, `#C7000B`. It explicitly recommends limited use to create a “point of red.” Use this as the default accent.
 
 An older public training slide specifies `RGB 153/0/0`, `#990000`. Treat this as a legacy/template-specific dark red. Use it only when matching an inherited template; do not combine both reds arbitrarily.
 
@@ -47,7 +47,7 @@ Practical page ratio:
 
 - 75–90% white or neutral canvas
 - 8–20% grayscale structure and text
-- 2–8% Huawei red emphasis
+- 2–8% Jiaopian red emphasis
 
 This ratio is a practical default, not an official measured rule.
 
@@ -56,11 +56,11 @@ This ratio is a practical default, not an official measured rule.
 Official public VI distinguishes company-specific fonts from general fonts:
 
 - Company-specific Chinese: 方正兰亭细黑简体、方正兰亭黑简体、方正兰亭粗黑简体
-- Company-specific Latin: Huawei Sans Light, Regular, Bold
+- Company-specific Latin: Jiaopian Sans Light, Regular, Bold
 - General Chinese: Microsoft YaHei family
 - General Latin: Arial Regular and Bold
 
-This skill defaults to Microsoft YaHei for Chinese and Arial for English text and numbers to maximize portability and editing consistency. Use 方正兰亭黑 or Huawei Sans only when an approved template explicitly requires them and the licensed fonts are available.
+This skill defaults to Microsoft YaHei for Chinese and Arial for English text and numbers to maximize portability and editing consistency. Use 方正兰亭黑 or Jiaopian Sans only when an approved template explicitly requires them and the licensed fonts are available.
 
 For mixed-script HTML, declare `Arial, "Microsoft YaHei", "微软雅黑", sans-serif` in that order. Font fallback is resolved glyph by glyph: Arial renders Latin letters and numbers, while Chinese glyphs fall through to Microsoft YaHei. Putting Microsoft YaHei first does not satisfy the Latin/number rule because that font also contains Latin glyphs.
 
@@ -92,7 +92,7 @@ For a net-new business mainslide deck, use red for the full takeaway title and, 
 
 The public ICT Talent Ecosystem mainslides frequently use full red takeaway titles without a persistent top strip or title underline. Use this as the default PPTX title system when no stronger template is supplied. A neutral technical deck may instead use dark titles with one red phrase or focal object, but select that system explicitly before authoring and use it consistently. Do not drift into mixed red/dark titles merely because individual phrases are easy to color.
 
-Red lines are not a default brand signature. Use a red line only when the line itself carries meaning, such as a selected path, threshold, trend, or active stage. Use gray for routine borders and separators. Do not use red simultaneously for title, top rule, title underline, every icon, all arrows, every number, and the footer.
+Red lines are not a default jiaopian signature. Use a red line only when the line itself carries meaning, such as a selected path, threshold, trend, or active stage. Use gray for routine borders and separators. Do not use red simultaneously for title, top rule, title underline, every icon, all arrows, every number, and the footer.
 
 ### Charts
 
@@ -120,13 +120,13 @@ Red lines are not a default brand signature. Use a red line only when the line i
 - Avoid generic handshake imagery, random server-room collages, low-resolution screenshots, and decorative stock icons.
 - Do not place a logo on a visually complex image unless the approved logo version remains clearly legible.
 
-### Logo and co-branding
+### Logo and co-jiaopian
 
 - Use the official digital artwork; never recreate or redesign the logo.
 - Preserve aspect ratio, color, and clear space.
-- White is the preferred background in official co-branding guidance.
+- White is the preferred background in official co-jiaopian guidance.
 - Approved red, black, or reversed-white variants depend on background contrast; do not improvise variants.
-- In co-branding, align visual height, preserve separation, and follow the partner agreement. The public co-branding guide allows the separator line to be optional in some PPT scenarios, but agreement-specific rules take precedence.
+- In co-jiaopian, align visual height, preserve separation, and follow the partner agreement. The public co-jiaopian guide allows the separator line to be optional in some PPT scenarios, but agreement-specific rules take precedence.
 
 ### Avoid
 

@@ -1,7 +1,7 @@
 {
   "meta": {
-    "name": "Huawei-style presentation defaults",
-    "status": "distilled practical defaults, not an official Huawei template",
+    "name": "Jiaopian-style presentation defaults",
+    "status": "distilled practical defaults, not an official Jiaopian template",
     "version": "1.3.0",
     "checked": "2026-07-14"
   },
@@ -16,7 +16,7 @@
     "marginBottomInches": 0.4
   },
   "colors": {
-    "huaweiRed": "#C7000B",
+    "jiaopianRed": "#C7000B",
     "legacyTemplateRed": "#990000",
     "textPrimary": "#231815",
     "textSecondary": "#595757",
@@ -45,7 +45,7 @@
       "方正兰亭黑简体"
     ],
     "templateSpecificLatin": [
-      "Huawei Sans"
+      "Jiaopian Sans"
     ]
   },
   "typeScalePt": {
