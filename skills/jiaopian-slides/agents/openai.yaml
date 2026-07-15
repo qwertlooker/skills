@@ -1,0 +1,4 @@
+interface:
+  display_name: "胶片"
+  short_description: "主打胶片风格的原生可编辑PPTX工作流"
+  default_prompt: "Use $jiaopian-slides to create a native editable presentation PPTX calibrated to enterprise mainslide patterns, with a light canvas, takeaway titles, evidence-led layouts, and brand-safe assets."
