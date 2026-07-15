@@ -1,0 +1,4 @@
+interface:
+  display_name: "商务胶片"
+  short_description: "基于公开主打胶片校准的原生可编辑商务风PPTX工作流"
+  default_prompt: "Use $bantian-slides to create a native editable business-style PPTX calibrated to public business mainslide patterns, with a light canvas, takeaway titles, evidence-led layouts, and brand-safe assets."

@@ -1,9 +1,9 @@
 ---
-name: huawei-slides
-description: Create, rewrite, or review Huawei-style presentation slides, standalone HTML decks, and PPTX files with conclusion-led business logic, restrained Huawei-red accents, disciplined typography, structured diagrams, and brand-safe logo handling. Use for requests mentioning 华为胶片、华为风PPT、华为式汇报、主打胶片、技术胶片、解决方案胶片、客户交流材料、领导汇报材料, or when adapting content to a Huawei-provided PPT/PPTX template. Do not use for generic presentations with no Huawei-style requirement or when another supplied brand system governs the deck.
+name: bantian-slides
+description: Create, rewrite, or review business presentation slides, standalone HTML decks, and PPTX files with conclusion-led business logic, disciplined typography, structured diagrams, and brand-safe handling. Use for requests mentioning 胶片、商务PPT、汇报材料、主打胶片、技术胶片、解决方案胶片、客户交流材料、领导汇报材料, or when adapting content to a corporate-provided PPT/PPTX template.
 ---
 
-# Huawei Slides
+# Bantian Slides
 
 Create Huawei-style slides by combining rigorous message design with a restrained, technical visual system. Treat “Huawei style” as a communication method first and a red-and-white appearance second.
 
@@ -15,8 +15,8 @@ Create Huawei-style slides by combining rigorous message design with a restraine
 - Read [public-mainslide-patterns.md](references/public-mainslide-patterns.md) when the user asks for 主打胶片, wants comparison with Huawei public decks, or when calibrating a short leadership/customer deck to the public ICT Talent Ecosystem mainslide style.
 - Read [html-output.md](references/html-output.md) only when the requested deliverable is HTML.
 - Read [source-register.md](references/source-register.md) only when provenance, confidence, or official-vs-inferred status matters.
-- Use [huawei-slide-tokens.json](assets/huawei-slide-tokens.json) as the default machine-readable style token set when no official template is supplied.
-- Use [huawei-pptx-layouts.json](assets/huawei-pptx-layouts.json) to choose PPTX page silhouettes instead of repeating one card grid.
+- Use [bantian-slide-tokens.json](assets/bantian-slide-tokens.json) as the default machine-readable style token set when no official template is supplied.
+- Use [bantian-pptx-layouts.json](assets/bantian-pptx-layouts.json) to choose PPTX page silhouettes instead of repeating one card grid.
 
 ## Route the deliverable before authoring
 
