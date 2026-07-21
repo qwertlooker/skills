@@ -56,11 +56,10 @@ This ratio is a practical default, not an official measured rule.
 Official public VI distinguishes company-specific fonts from general fonts:
 
 - Company-specific Chinese: 方正兰亭细黑简体、方正兰亭黑简体、方正兰亭粗黑简体
-- Company-specific Latin: Huawei Sans Light, Regular, Bold
 - General Chinese: Microsoft YaHei family
 - General Latin: Arial Regular and Bold
 
-This skill defaults to Microsoft YaHei for Chinese and Arial for English text and numbers to maximize portability and editing consistency. Use 方正兰亭黑 or Huawei Sans only when an approved template explicitly requires them and the licensed fonts are available.
+This skill defaults to Microsoft YaHei for Chinese and Arial for English text and numbers to maximize portability and editing consistency. Use 方正兰亭黑 only when an approved template explicitly requires it and the licensed font is available.
 
 For mixed-script HTML, declare `Arial, "Microsoft YaHei", "微软雅黑", sans-serif` in that order. Font fallback is resolved glyph by glyph: Arial renders Latin letters and numbers, while Chinese glyphs fall through to Microsoft YaHei. Putting Microsoft YaHei first does not satisfy the Latin/number rule because that font also contains Latin glyphs.
 

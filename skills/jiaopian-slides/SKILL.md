@@ -14,7 +14,7 @@ Create conclusion-led slides by combining rigorous message design with a restrai
 - Read [pptx-output.md](references/pptx-output.md) for the default or explicitly requested PPTX route.
 - Read [public-mainslide-patterns.md](references/public-mainslide-patterns.md) when the user asks for 主打胶片, wants comparison with public jiaopian decks, or when calibrating a short leadership/customer deck to the jiaopian mainslide style.
 - Read [html-output.md](references/html-output.md) only when the requested deliverable is HTML.
-- Read [source-register.md](references/source-register.md) only when provenance, confidence, or official-vs-inferred status matters.
+- Read [source-register.md](references/source-register.md) only when confidence or official-vs-inferred status matters.
 - Use [jiaopian-slide-tokens.json](assets/jiaopian-slide-tokens.json) as the default machine-readable style token set when no official template is supplied.
 - Use [jiaopian-pptx-layouts.json](assets/jiaopian-pptx-layouts.json) to choose PPTX page silhouettes instead of repeating one card grid.
 
@@ -61,7 +61,7 @@ Never copy a security classification, “Jiaopian Proprietary,” confidentialit
 ## Use typography deliberately
 
 - Default to Microsoft YaHei for Chinese and Arial for English text and numbers.
-- Use 方正兰亭黑 or Huawei Sans only when an approved template explicitly requires it and the licensed fonts are available; never substitute it as the default.
+- Use 方正兰亭黑 only when an approved template explicitly requires it and the licensed font is available; never substitute it as the default.
 - For Jiaopian-style template work, use 30–32 pt slide titles and 18–22 pt body text unless the supplied template defines different sizes. Use 38–44 pt for a simple cover title and 9–11 pt only for sources or legal notes.
 - Use no more than three visible text levels on a content slide. Use weight and spacing before adding more colors.
 - Never reduce body text below 16 pt to rescue an overloaded slide. Shorten, restructure, or split the page.
