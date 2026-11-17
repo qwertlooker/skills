@@ -10,8 +10,11 @@ import stat
 from pathlib import Path
 from urllib.parse import urlparse
 
-DEFAULT_IMAGE = "<ascend-image-tag>"
-DEFAULT_HARDWARE = "<target-hardware-model>"
+from delivery import render_facts
+from project_log import add_git_exclude, slug
+
+DEFAULT_IMAGE = None
+DEFAULT_HARDWARE = None
 ROUTES = ["onnx-om", "torch-npu", "torchair", "vllm-ascend", "hybrid"]
 
 
@@ -33,149 +36,24 @@ def atomic_write(path: Path, content: str, executable: bool = False) -> None:
         path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
-def route_section(route: str) -> str:
-    sections = {
-        "onnx-om": """## 模型导出与转换
-
-```bash
-python3 export_onnx.py --model-path <checkpoint-or-repo> --output model.onnx
-export SOC_VERSION=<soc-version>
-bash convert_om.sh model.onnx model "${SOC_VERSION}"
-```
-
-TODO：实现模型加载和样例输入；记录 ONNX checker、ATC 日志和 OM SHA256。
-""",
-        "torch-npu": """## torch_npu 推理
-
-TODO：patch 上游入口支持默认 `--device npu`，补充单样例、精度和性能命令。
-""",
-        "torchair": """## TorchAir 图编译与推理
-
-TODO：补充上游入口、编译配置、cache 冷热、首次编译、稳定推理和性能命令。
-""",
-        "vllm-ascend": """## vLLM-Ascend 服务
-
-TODO：补充 server、health check、client、并发、显存、cache 和性能命令。
-""",
-        "hybrid": """## 混合/拆图路线
-
-TODO：列出每个组件的实现、权重、输入输出、目标设备、CPU fallback 阻塞和端到端数据流。
-""",
-    }
-    return sections[route]
-
-
-def readme(
-    model: str, url: str, category: str, route: str, image: str, hardware: str
-) -> str:
-    return f"""
-# {model}-推理指导
-
-> 当前为脚手架，状态不是 NPU 验证通过。删除所有 TODO，或将缺失验证明确标为 `待 NPU 验证`。
-
-## 概述
-
-- 上游：{url}
-- 固定 commit/revision：TODO
-- 类别/目录：`ACL_PyTorch/built-in/{category}/{model}`
-- 路线：{route}
-- 对外硬件型号：{hardware}
-- checkpoint/config/tokenizer/label map：TODO
-- license/再分发限制：TODO
-
-## 环境
-
-| 项目 | 实测版本 |
-|---|---|
-| 镜像 | `{image}` |
-| 对外硬件型号 | {hardware} |
-| CANN / Python | TODO |
-| torch / torch_npu | TODO |
-| 路线相关工具 | TODO |
-
-不要用 pip 覆盖镜像配套的 torch/torch_npu/torchvision/torchaudio。
-
-### 容器启动
-
-按项目实际设备和权限调整模板；只挂载任务需要的缓存、凭据和宿主机目录。
-
-```bash
-export IMAGE={image}
-docker pull ${{IMAGE}}
-docker run -itd -u root --net=host --privileged=true \
-  --name <container-name> --shm-size=256g --ipc=host \
-  --device=/dev/davinci0 \
-  --device=/dev/davinci_manager \
-  --device=/dev/devmm_svm \
-  --device=/dev/hisi_hdc \
-  -v /usr/local/Ascend/driver:/usr/local/Ascend/driver \
-  -v /usr/local/Ascend/firmware:/usr/local/Ascend/firmware:ro \
-  -v /usr/local/dcmi:/usr/local/dcmi \
-  -v /usr/local/sbin/npu-smi:/usr/local/sbin/npu-smi \
-  -v /etc/ascend_install.info:/etc/ascend_install.info \
-  -v <宿主机工程目录>:<宿主机工程目录> \
-  -v /root/.cache:/root/.cache \
-  ${{IMAGE}} bash -i
-docker exec -it <container-name> bash
-cd <宿主机工程目录>
-source /usr/local/Ascend/ascend-toolkit/set_env.sh
-npu-smi info
-python3 -c "import torch, torch_npu; print(torch.__version__, torch_npu.__version__, torch.npu.is_available())"
-```
-
-## 源码、patch 与依赖
-
-```bash
-git clone {url} <upstream-dir>
-cd <upstream-dir>
-git checkout <fixed-commit>
-git apply --check ../diff.patch
-git apply ../diff.patch
-
-# 回到本 ModelZoo 目录，先审计上游 requirements/setup/pyproject。
-pip install -r requirements.txt
-# 有顶层 editable 包时：pip install --no-deps -e <upstream-dir>
-```
-
-TODO：补充 import、`--help`、错误路径和单样例 smoke test。
-
-## 权重与数据
-
-TODO：列出来源、SHA256、目录树、生成者/消费者、完整数据集/split 和评测工具。生成的统计或 label 文件必须给生成命令。
-
-{route_section(route)}
-## NPU 推理
-
-```bash
-export ASCEND_RT_VISIBLE_DEVICES=0
-# python3 <patched-upstream-entry>.py --device npu ...
-```
-
-TODO：列出输入输出 name/shape/dtype/layout、命令、输出和日志。
-
-## 精度与性能
-
-| 数据集/split | Metric | 官方/GPU 参考与来源 | NPU 实测 | 结论 |
-|---|---|---|---|---|
-| TODO | TODO | TODO | 待 NPU 验证 | TODO |
-
-| 对外硬件型号 | Batch/并发 | Warmup/loop | 计时边界 | NPU 性能 |
-|---|---:|---:|---|---:|
-| {hardware} | TODO | TODO | 纯模型/端到端 TODO | 待 NPU 验证 |
-
-纯模型 NPU 计时前后 synchronize；端到端结果写明数据、网络、排队、后处理和 CPU fallback。正式性能至少独立执行 3 次，保存每次结果并报告中位数。
-
-## FAQ
-
-- CPU-only 只能准备材料，不能声明 NPU 通过。
-- TODO：记录实际依赖、cache、长编译、unsupported op 和 fallback。
-
-## 公网地址
-
-| 名称 | URL | 用途 |
-|---|---|---|
-| 上游源码 | {url} | 固定到 TODO commit |
-"""
+def readme(model: str, url: str, image: str | None, hardware: str | None) -> str:
+    environment = "软件和硬件兼容范围尚未经过实测确认。"
+    if image:
+        environment += f"\n\n指定镜像：`{image}`（尚未实测）。"
+    if hardware:
+        environment += f"\n\n指定硬件：{hardware}（尚未实测）。"
+    return render_facts({
+        "title": f"{model} 推理指导",
+        "overview": f"模型来源：{url}。",
+        "environment": environment,
+        "installation": "安装方法尚未提供，当前文件不能直接用于部署模型。",
+        "data": "固定源码版本、权重、配置、数据和许可证信息尚未提供。",
+        "inference": "可执行的模型运行方法尚未提供。",
+        "evaluation": "未提供 NPU 精度与性能结果。",
+        "limitations": "尚未在 Ascend NPU 上实测；可运行范围和依赖兼容性尚未确认。",
+        "faq": "",
+        "sources": f"- 上游源码：{url}",
+    })
 
 
 def export_onnx(model: str) -> str:
@@ -249,18 +127,18 @@ if __name__ == "__main__":
 '''
 
 
-def npu_adaptation(model: str, url: str, category: str) -> str:
+def npu_adaptation(model: str, url: str, category: str, profile: str) -> str:
+    target_scope = (
+        f"ModelZoo 目标路径：`ACL_PyTorch/built-in/{category}/{model}`；master/路径状态/样本/贡献门禁：TODO"
+        if profile == "modelzoo" else "用户交付目标和验证范围：TODO；ModelZoo 上库约束不适用。"
+    )
     return f"""
 # {model} NPU 适配事实
 
-## 目标仓基线
+## 任务范围
 
-- 检查日期：TODO
-- ModelZoo-PyTorch master commit：TODO
-- 拟合入路径：`ACL_PyTorch/built-in/{category}/{model}`
-- 目标路径：TODO（不存在/新增，或存在/增量更新范围）
-- 近期同领域同路线参考目录及最后实质 commit/date：TODO
-- 当前贡献门禁、license、自测试、modelzoo_level 适用结论：TODO
+- {target_scope}
+- 检查日期、候选文件与排除项：TODO
 
 ## 版本边界
 
@@ -341,11 +219,15 @@ def main() -> int:
         "--layout",
         choices=["workspace", "target"],
         required=True,
-        help="workspace includes internal adaptation/acceptance docs; target is the flat ACL candidate",
+        help="Initialize a workspace or a flat target scaffold; this does not assemble a delivery",
     )
     parser.add_argument("--route", choices=ROUTES, required=True)
     parser.add_argument("--image", default=DEFAULT_IMAGE)
     parser.add_argument("--hardware-model", default=DEFAULT_HARDWARE)
+    parser.add_argument("--profile", choices=["generic", "modelzoo"], default="generic")
+    parser.add_argument("--project-id", help="Stable internal project ID; defaults to category__model")
+    parser.add_argument("--internal-dir", type=Path, help="Internal docs directory, relative to output or absolute")
+    parser.add_argument("--with-readme", action="store_true", help="Explicitly create a public README draft")
     parser.add_argument("--with-infer", action="store_true")
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
@@ -353,49 +235,55 @@ def main() -> int:
     model = args.model_name or infer_name(args.model_url)
     output = args.output_dir
     files = {
-        "README.md": readme(
-            model,
-            args.model_url,
-            args.category,
-            args.route,
-            args.image,
-            args.hardware_model,
-        ),
-        "requirements.txt": (
+        output / "requirements.txt": (
             "# Business dependencies only. Keep the image-provided torch stack intact.\n"
         ),
     }
-    if args.layout == "workspace":
-        files["NPU_ADAPTATION.md"] = npu_adaptation(
-            model, args.model_url, args.category
+    if args.layout == "target" or args.with_readme:
+        files[output / "README.md"] = readme(
+            model, args.model_url, args.image, args.hardware_model
         )
-        files["ACCEPTANCE_PLAN.md"] = acceptance_plan(model)
+    if args.layout == "workspace":
+        project_id = slug(args.project_id or f"{args.category}__{model}")
+        internal = args.internal_dir or Path(".ascend-adaptation") / project_id
+        if not internal.is_absolute():
+            internal = output / internal
+        files[internal / "NPU_ADAPTATION.md"] = npu_adaptation(
+            model, args.model_url, args.category, args.profile
+        )
+        files[internal / "ACCEPTANCE_PLAN.md"] = acceptance_plan(model)
     executable: set[str] = set()
     if args.route == "onnx-om":
-        files["export_onnx.py"] = export_onnx(model)
-        files["convert_om.sh"] = convert_om()
+        files[output / "export_onnx.py"] = export_onnx(model)
+        files[output / "convert_om.sh"] = convert_om()
         executable.update({"export_onnx.py", "convert_om.sh"})
     if args.with_infer:
-        files["infer.py"] = infer(model, args.route)
+        files[output / "infer.py"] = infer(model, args.route)
         executable.add("infer.py")
 
     collisions = [
-        output / relative for relative in files if (output / relative).exists()
+        path for path in files if path.exists() or path.is_symlink()
     ]
     if collisions and not args.force:
         raise FileExistsError(
             "Refusing partial scaffold write; existing files: "
             + ", ".join(str(path) for path in collisions)
         )
+    # Check all destination links before writing any file, including with --force.
+    for path in files:
+        if any(parent.is_symlink() for parent in [path, *path.parents]):
+            raise ValueError(f"Refusing to write through symbolic link: {path}")
     output.mkdir(parents=True, exist_ok=True)
-    for relative, content in files.items():
-        atomic_write(output / relative, content, relative in executable)
+    for path, content in files.items():
+        atomic_write(path, content, path.name in executable)
+    if args.layout == "workspace":
+        add_git_exclude(output)
 
     print(f"Created scaffold: {output}")
     print(f"Route: {args.route}; layout: {args.layout}")
-    print("Files: " + ", ".join(sorted(files)))
+    print("Files: " + ", ".join(sorted(str(path) for path in files)))
     print(
-        "Initialize a separate project work log with scripts/project_log.py; do not put it here."
+        "Scaffold only. Keep execution notes private; prepare user documentation through the delivery workflow."
     )
     return 0
 

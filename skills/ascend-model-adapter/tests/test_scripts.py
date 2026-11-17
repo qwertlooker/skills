@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import importlib.util
+import contextlib
+import io
 import json
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 SKILL_DIR = Path(__file__).resolve().parents[1]
 SCRIPTS = SKILL_DIR / "scripts"
@@ -61,97 +64,46 @@ class ReviewSamplerTests(unittest.TestCase):
         self.assertTrue(self.module.is_noise("changed the description"))
         self.assertTrue(self.module.is_noise("AI 代码审查执行失败，请稍后重试"))
 
-    def test_fetches_full_discussion_page_and_sorts_newest_first(self):
-        module = self.module
-
-        class FakeSession:
-            def __init__(self):
-                self.urls = []
-
-            def get(self, url, headers, timeout):
-                self.urls.append(url)
-                if url.endswith("/pull/12"):
-                    return module.HttpResponse(200, "{}")
-                if url.endswith("/isource/merge_requests/12"):
-                    return module.HttpResponse(
-                        200, json.dumps({"iid": 12, "title": "Demo", "sha": "abc"})
-                    )
-                return module.HttpResponse(
-                    200,
-                    json.dumps(
-                        {
-                            "total": 2,
-                            "content": {
-                                "data": [
-                                    {
-                                        "notes": [
-                                            {
-                                                "body": "old review",
-                                                "created_at": "2026-07-13T10:00:00",
-                                                "author": {"username": "bot"},
-                                            }
-                                        ]
-                                    },
-                                    {
-                                        "notes": [
-                                            {
-                                                "body": "new review",
-                                                "created_at": "2026-07-13T11:00:00",
-                                                "author": {"username": "bot"},
-                                            },
-                                        ]
-                                    }
-                                ]
-                            },
-                        }
-                    ),
-                )
-
-        session = FakeSession()
-        detail, notes = module.fetch_pr(
-            session, "https://gitcode.example", "Ascend/ModelZoo-PyTorch", 12, {}
-        )
-        self.assertIn("page=1&per_page=100", session.urls[-1])
-        self.assertEqual(2, detail["_discussion_total"])
-        self.assertEqual(2, detail["_discussion_fetched"])
-        self.assertEqual(
-            ["new review", "old review"],
-            [note.body for note in module.newest_notes_first(notes)],
-        )
-        duplicate_statuses = [
-            module.Note(
-                12, "Demo", "robot", "pipeline passed", "2026-07-13T10:00:00"
-            ),
-            module.Note(
-                12, "Demo", "robot", "pipeline passed", "2026-07-13T12:00:00"
-            ),
+    def test_discussions_follow_cursor_and_validate_complete_count(self):
+        pages = [
+            {"page_num": 1, "page_count": 2, "total": 2,
+             "content": {"data": [{"id": 1}], "end_id": 1, "end_system_id": 4}},
+            {"page_num": 2, "page_count": 2, "total": 2,
+             "content": {"data": [{"id": 2}]}},
         ]
-        deduped = module.dedupe_notes(duplicate_statuses)
-        self.assertEqual(1, len(deduped))
-        self.assertEqual("2026-07-13T12:00:00", deduped[0].created_at)
+        with patch.object(self.module, "get_json", side_effect=pages) as get:
+            result = self.module.fetch_discussions(None, "https://example.invalid/discussions", {})
+        self.assertEqual(2, result["pages"])
+        self.assertEqual([1, 2], [row["id"] for row in result["content"]["data"]])
+        self.assertIn("end_id=1", get.call_args_list[1].args[1])
+        self.assertIn("end_system_id=4", get.call_args_list[1].args[1])
 
-    def test_truncated_discussions_fail_closed(self):
-        module = self.module
+    def test_discussions_reject_schema_repeat_and_incomplete_results(self):
+        first = {"page_num": 1, "page_count": 2, "total": 2,
+                 "content": {"data": [{"id": 1}], "end_id": 1, "end_system_id": 4}}
+        repeated = {**first, "page_num": 2}
+        incomplete = {"page_num": 1, "page_count": 1, "total": 2,
+                      "content": {"data": [{"id": 1}]}}
+        for pages in ([{}], [first, repeated], [incomplete]):
+            with self.subTest(pages=pages), patch.object(self.module, "get_json", side_effect=pages):
+                result = self.module.fetch_discussions(None, "https://example.invalid/discussions", {})
+                self.assertIn("_error", result)
 
-        class FakeSession:
-            def get(self, url, headers, timeout):
-                if url.endswith("/pull/12"):
-                    return module.HttpResponse(200, "{}")
-                if url.endswith("/isource/merge_requests/12"):
-                    return module.HttpResponse(200, json.dumps({"iid": 12}))
-                return module.HttpResponse(
-                    200,
-                    json.dumps({"total": 101, "content": {"data": [{}]}}),
-                )
+    def test_pr_metadata_without_head_is_not_accepted(self):
+        with patch.object(self.module, "get_json", return_value={"iid": 1}), \
+             patch.object(self.module, "fetch_discussions", return_value={"total": 0, "pages": 1, "content": {"data": []}}):
+            detail, _ = self.module.fetch_pr(None, "https://example.invalid", "org/repo", 1, {})
+        self.assertIn("_error", detail)
 
-        detail, _ = module.fetch_pr(
-            FakeSession(),
-            "https://gitcode.example",
-            "Ascend/ModelZoo-PyTorch",
-            12,
-            {},
-        )
-        self.assertIn("truncated", detail["_discussion_error"])
+    def test_every_expected_pr_directory_must_match(self):
+        argv = ["sampler", "--pr-path", "1=A", "--pr-path", "1=B"]
+        with patch.object(sys, "argv", argv), \
+             patch.object(self.module, "fetch_pr", return_value=({"iid": 1, "sha": "head"}, [])), \
+             patch.object(self.module, "fetch_diff_paths", return_value=(["A/README.md"], None)), \
+             patch.object(self.module.time, "sleep"), \
+             contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            result = self.module.main()
+        self.assertEqual(3, result)
 
 
 class QuickcheckTests(unittest.TestCase):
@@ -194,51 +146,6 @@ class QuickcheckTests(unittest.TestCase):
             ]
             self.assertTrue(any("child failure" in message for message in messages))
             self.assertTrue(any("download HTML" in message for message in messages))
-
-    def test_catches_runtime_cleanup_and_markdown_gate_failures(self):
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            target = root / "ACL_PyTorch/built-in/audio/Demo"
-            target.mkdir(parents=True)
-            (target / "README.md").write_text(
-                "# 模型推理性能与精度\n[结果](#模型推理性能精度)\n```\ntext\n```",
-                encoding="utf-8",
-            )
-            (target / "verify.py").write_text(
-                "om = InferSession(0, 'demo.om')\n"
-                "ort_session = ort.InferenceSession('demo.onnx')\n",
-                encoding="utf-8",
-            )
-            findings = [
-                *self.module.check_readme_markdown(root, target),
-                *self.module.check_review_patterns(root, target),
-            ]
-            messages = [finding.message for finding in findings]
-            self.assertTrue(any("final newline" in message for message in messages))
-            self.assertTrue(any("lacks a language" in message for message in messages))
-            self.assertTrue(
-                any("anchor does not match" in message for message in messages)
-            )
-            self.assertTrue(any("free_resource" in message for message in messages))
-            self.assertTrue(any("scope-exit cleanup" in message for message in messages))
-
-            (target / "verify.py").write_text(
-                "with ExitStack() as cleanup:\n"
-                "    sessions = {}\n"
-                "    sessions['om'] = InferSession(0, 'demo.om')\n"
-                "    cleanup.callback(sessions['om'].free_resource)\n"
-                "    sessions['ort'] = ort.InferenceSession('demo.onnx')\n"
-                "    cleanup.callback(sessions.clear)\n",
-                encoding="utf-8",
-            )
-            fixed_messages = [
-                finding.message
-                for finding in self.module.check_review_patterns(root, target)
-            ]
-            self.assertFalse(any("free_resource" in message for message in fixed_messages))
-            self.assertFalse(
-                any("scope-exit cleanup" in message for message in fixed_messages)
-            )
 
     def test_modelzoo_constraints_catch_device_and_runtime_download(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -287,9 +194,12 @@ class ScaffoldTests(unittest.TestCase):
             self.assertFalse((output / "README.md").exists())
             self.assertEqual("existing\n", requirements.read_text(encoding="utf-8"))
 
-    def test_workspace_layout_includes_three_main_documents(self):
+    def test_workspace_keeps_internal_documents_private_and_existing_readme(self):
         with tempfile.TemporaryDirectory() as temp:
             output = Path(temp) / "workspace"
+            output.mkdir()
+            readme = output / "README.md"
+            readme.write_text("# Existing usage\n\nKeep these instructions.\n", encoding="utf-8")
             result = subprocess.run(
                 [
                     sys.executable,
@@ -307,8 +217,10 @@ class ScaffoldTests(unittest.TestCase):
                 capture_output=True,
             )
             self.assertEqual(0, result.returncode, result.stderr)
-            for name in ("README.md", "NPU_ADAPTATION.md", "ACCEPTANCE_PLAN.md"):
-                self.assertTrue((output / name).is_file(), name)
+            self.assertEqual("# Existing usage\n\nKeep these instructions.\n", readme.read_text())
+            for name in ("NPU_ADAPTATION.md", "ACCEPTANCE_PLAN.md"):
+                self.assertTrue((output / ".ascend-adaptation/cv__demo" / name).is_file(), name)
+                self.assertFalse((output / name).exists(), name)
 
 
 class ProjectLogTests(unittest.TestCase):

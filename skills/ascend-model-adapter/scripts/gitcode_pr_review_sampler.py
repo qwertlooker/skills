@@ -24,7 +24,6 @@ from pathlib import Path
 
 DEFAULT_REPO = "Ascend/ModelZoo-PyTorch"
 DEFAULT_BASE = "https://gitcode.com"
-DISCUSSION_PAGE_SIZE = 100
 
 KEYWORDS = [
     "CodeCheck",
@@ -84,7 +83,6 @@ class Note:
     title: str
     author: str
     body: str
-    created_at: str = ""
 
 
 @dataclass
@@ -186,6 +184,42 @@ def get_json(session: HttpSession, url: str, headers: dict) -> dict:
         return {"_error": repr(exc), "_text": resp.text[:500]}
 
 
+def fetch_discussions(session: HttpSession, url: str, headers: dict) -> dict:
+    """Read bounded cursor pages; an incomplete discussion is an evidence gap."""
+    rows = []
+    cursor = {}
+    seen = set()
+    total = None
+    for page in range(1, 21):
+        query = urllib.parse.urlencode({"page": page, "per_page": 100, **cursor})
+        result = get_json(session, f"{url}?{query}", headers)
+        if not isinstance(result, dict) or result.get("_error"):
+            return {"_error": f"discussion page {page}: {result!r}"}
+        content = result.get("content")
+        if not isinstance(content, dict) or not isinstance(content.get("data"), list):
+            return {"_error": f"discussion page {page}: unexpected response schema"}
+        if result.get("page_num") != page or not isinstance(result.get("page_count"), int):
+            return {"_error": f"discussion page {page}: missing or inconsistent pagination"}
+        if total is None:
+            total = result.get("total")
+        if not isinstance(total, int) or result.get("total") != total:
+            return {"_error": "discussion total changed during pagination; retry snapshot"}
+        batch = content["data"]
+        signature = tuple(str(item.get("id")) for item in batch if isinstance(item, dict))
+        if signature in seen or len(signature) != len(batch):
+            return {"_error": f"discussion page {page}: repeated or malformed data"}
+        seen.add(signature)
+        rows.extend(batch)
+        if page >= result["page_count"]:
+            if len(rows) != total:
+                return {"_error": f"incomplete discussion: got {len(rows)} of {total}"}
+            return {"total": total, "pages": page, "content": {"data": rows}}
+        if not batch or any(content.get(key) is None for key in ("end_id", "end_system_id")):
+            return {"_error": f"discussion page {page}: missing continuation cursor"}
+        cursor = {key: content[key] for key in ("end_id", "end_system_id")}
+    return {"_error": "discussion exceeds 20-page collection limit"}
+
+
 def fetch_pr(
     session: HttpSession, base: str, repo: str, pr: int, headers: dict
 ) -> tuple[dict, list[Note]]:
@@ -199,16 +233,16 @@ def fetch_pr(
         f"{base}/issuepr/api/v1/projects/{encoded_repo}/isource/merge_requests/{pr}",
         headers,
     )
-    discussion_query = urllib.parse.urlencode(
-        {"page": 1, "per_page": DISCUSSION_PAGE_SIZE}
-    )
-    discussions = get_json(
+    discussions = fetch_discussions(
         session,
-        f"{base}/issuepr/api/v1/projects/{encoded_repo}/merge_requests/"
-        f"{pr}/discussions?{discussion_query}",
+        f"{base}/issuepr/api/v1/projects/{encoded_repo}/merge_requests/{pr}/discussions",
         headers,
     )
     title = detail.get("title", "") if isinstance(detail, dict) else ""
+    if not isinstance(detail, dict):
+        detail = {"_error": "unexpected PR metadata schema"}
+    elif not detail.get("_error") and (not detail.get("iid") or not detail.get("sha")):
+        detail["_error"] = "PR metadata lacks iid or head SHA"
     notes: list[Note] = []
     data = []
     if isinstance(discussions, dict) and isinstance(discussions.get("content"), dict):
@@ -220,25 +254,11 @@ def fetch_pr(
                 "username", ""
             )
             if not is_noise(body):
-                notes.append(
-                    Note(
-                        pr=pr,
-                        title=title,
-                        author=author,
-                        body=body,
-                        created_at=str(
-                            note.get("created_at") or item.get("created_at") or ""
-                        ),
-                    )
-                )
-    total = discussions.get("total") if isinstance(discussions, dict) else None
-    detail["_discussion_total"] = total
-    detail["_discussion_fetched"] = len(data)
-    if isinstance(total, int) and total > len(data):
-        discussions["_error"] = (
-            f"discussion response truncated: fetched {len(data)} of {total}; "
-            f"increase DISCUSSION_PAGE_SIZE or add cursor pagination"
-        )
+                notes.append(Note(pr=pr, title=title, author=author, body=body))
+    detail["_discussion_total"] = (
+        discussions.get("total") if isinstance(discussions, dict) else None
+    )
+    detail["_discussion_pages"] = discussions.get("pages")
     if isinstance(discussions, dict) and discussions.get("_error"):
         detail["_discussion_error"] = discussions["_error"]
     return detail, notes
@@ -302,14 +322,10 @@ def parse_pr_path(values: list[str]) -> dict[int, list[str]]:
     return dict(mapping)
 
 
-def newest_notes_first(notes: list[Note]) -> list[Note]:
-    return sorted(notes, key=lambda note: note.created_at, reverse=True)
-
-
 def dedupe_notes(notes: list[Note]) -> list[Note]:
     unique: list[Note] = []
     seen: set[tuple[int, str, str]] = set()
-    for note in newest_notes_first(notes):
+    for note in notes:
         key = (note.pr, note.author, note.body)
         if key not in seen:
             seen.add(key)
@@ -422,11 +438,8 @@ def render_markdown(records: list[PrRecord], notes: list[Note]) -> str:
         pipeline = str(pipeline_value or "unknown")
         if not pipeline_value and d.get("head_pipeline_id"):
             pipeline += f" (id={d['head_pipeline_id']})"
-        discussion_total = d.get("_discussion_total", "")
-        discussion_fetched = d.get("_discussion_fetched", "")
-        discussion_count = f"{discussion_fetched}/{discussion_total}"
         lines.append(
-            f"| {d.get('iid', '')} | {title} | {head} | {pipeline} | {discussion_count} | "
+            f"| {d.get('iid', '')} | {title} | {head} | {pipeline} | {d.get('_discussion_total', '')} | "
             f"{expected} | {match} | {errors} |"
         )
     lines.append("")
@@ -531,8 +544,9 @@ def main() -> int:
             if diff_error:
                 errors.append(diff_error)
         matched = match_paths(touched, expected)
-        if expected and not matched:
-            errors.append("changed files do not prove the expected ModelZoo path")
+        missing_paths = sorted(set(expected) - set(matched))
+        if missing_paths:
+            errors.append(f"changed files do not prove expected paths: {missing_paths}")
         if errors:
             bad.append(pr)
         records.append(

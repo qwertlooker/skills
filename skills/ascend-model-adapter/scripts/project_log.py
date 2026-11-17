@@ -362,7 +362,7 @@ def main() -> int:
     init_parser.add_argument("--patch-required", action="store_true")
     init_parser.add_argument("--target-path", required=True)
     init_parser.add_argument(
-        "--mode", choices=["adapt", "review", "resume"], default="adapt"
+        "--mode", choices=["adapt", "review", "deliver", "resume"], default="adapt"
     )
     init_parser.add_argument(
         "--route",

@@ -7,8 +7,7 @@
 3. Pipeline 与后端
 4. ONNX/OM
 5. 数据与预处理
-6. 编码规范与代码质量
-7. 服务和性能
+6. 服务和性能
 
 这些是排查信号，不替代实测、官方兼容矩阵或项目日志证据。
 
@@ -21,8 +20,9 @@
 - 只过滤会覆盖核心栈、拉取 CUDA runtime 或阻塞安装的依赖；过滤后用真实入口 import、`--help` 和单样例补齐业务依赖。
 - Paddle、vLLM、TorchAir、DrivingSDK、OpenCV、tesseract 等容易冲突；复杂 pipeline 可拆容器，但要记录组件边界和数据交换。
 - 版本相关 FAQ 只在实际触发版本下出现，不把历史 workaround 无条件复制到新环境。
-- 修改 site-packages 时用 `importlib.util.find_spec('<pkg>').submodule_search_locations[0]` 定位，patch 路径以 `<pkg>/` 开头并从 site-packages 根目录 `patch -p1`；不要为定位而 import 包。
+- 修改 site-packages 时用 `importlib.util.find_spec('<pkg>')` 定位顶层包，先检查 spec/包路径存在；不要为定位而 import 包。补丁路径和 strip 层数按 `patch-modification-patterns.md` 核对。
 - ONNX Runtime CANN EP 必须固定 CANN、onnxruntime-cann、Python/架构和安装命令或内部 wheel SHA，并验证 available/session provider；不能只写“安装配套 CANN EP”。
+- 多 requirements/extras 先查包含关系与任务依赖闭环，import 检查覆盖真实模型类、evaluator/normalizer 与实际 NPU tensor；不把只安装成功等同依赖可用。CPU ORT 与 CANN 构建避免在同一环境相互覆盖。
 
 ## 2. 权重和兼容性
 
@@ -54,30 +54,13 @@
 - `prepare_data.py` 区分下载输入、生成中间文件和最终 manifest；每个 dataset/language 分支用最小 fixture dry run。
 - 检查 GitHub zip 顶层目录、Hugging Face 原始文件 URL、压缩包类型、文件大小和可选 SHA256。
 - 环境数据下载优先在独立脚本中使用 wget/curl 并即时 file/size/SHA 校验，不把 nltk.download、datasets.load_dataset 或 Hub 自动下载嵌入推理/评测。确需 Python 下载器时同时提供固定 revision 的 wget/curl 离线替代。
+- 此下载约定不限制 pip 安装依赖；不预设所有环境都有内部 PyPI 镜像。URL check-only/HEAD 只支持可访问性/metadata 结论，不能代替完整文件校验或权重加载。curl `--fail` 也不能识别 HTTP 200 的 HTML 错误页。
 - 提供严格 `--offline` 或等价模式；缺文件时报告具体路径并失败，不联网 fallback。manifest/meta 记录远端 URL、config/split、本地文件、复用/离线状态和样本规模。
+- 数据准备写入显式指定目录，校验通过才复用，下载到临时文件后替换；检查实际 shard/split，避免只请求 test 却构建全量缓存。多个任务单独准备，必要的整 shard 下载量在文档说明。
 - 音频/图像/视频预处理精确复现采样率、声道、resize/crop、归一化、padding 和重采样工具；改动后对齐中间结果或任务指标。
 - 原仓没有的 norm stats、label map 或配置必须提供生成依据和命令。
 
-## 6. 编码规范与代码质量
-
-所有交付脚本（推理、评测、导出、benchmark、数据准备）必须通过基础静态检查（pylint / ruff / flake8 等），不得在 S1 前遗留以下典型问题：
-
-### 错误处理
-- **禁止 `sys.exit()` 和 `raise SystemExit()`**：函数体内不得调用 `sys.exit()` 或 `raise SystemExit()`，主进程入口 `if __name__ == "__main__"` 除外。依赖缺失应 `raise RuntimeError(...)`，参数校验失败应 `raise argparse.ArgumentTypeError(...)` 或 `raise ValueError(...)`，验证不通过应 `raise SystemExit(...)` 仅限 `main()` 或其直接委托的终态判定。
-- **异常链保留**：`except ... as exc` 后用 `raise ... from exc` 保留原始堆栈，不要吞掉上下文。
-
-### 格式
-- **算术操作符两侧必须有空格**：`a + b`，`a - b`，`a * b`，`a / b`，`a ** b`，`a // b`，`a % b`。`a+b`、`a-b` 均不合规范。
-- **一行只写一条语句**：禁止用分号 `;` 将多条语句写在同一行。例如 `ps.infer([pi]); ms.infer([mi])` 应拆为两行。
-- **紧凑计时模式**：性能测试中避免 `t = time.perf_counter(); func(); lat.append(time.perf_counter() - t)` 这类一行多语句写法，应拆为独立赋值、调用、记录三行。
-
-### 导入
-- 移除不再使用的 `import sys` 等废弃导入；`sys.exit` 全部替换后同步删除 `import sys`。
-
-### 自检
-- S1 门禁前对全部交付脚本执行 `ruff check` 或等价工具，零错误才可通过；发现的规则违反必须修复，不得用 `noqa` 压制后进入候选目录。
-
-## 7. 服务和性能
+## 6. 服务和性能
 
 - vLLM/TorchAir 提供 server、client、health check、预热/编译缓存、并发、显存和恢复说明。
 - vLLM 嵌套配置按固定版本实际 `--help` 的 JSON/CLI 语法书写；server 的 served model、context、client 和 benchmark 名称保持一致。外部 evaluator/agent/tool 仓固定 commit。

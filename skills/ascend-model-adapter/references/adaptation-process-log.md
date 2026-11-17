@@ -6,7 +6,20 @@
 <workspace>/.ascend-adaptation/<category>__<model>/worklog.json
 ```
 
-不要把多个项目写入同一个固定文件，也不要把 `.ascend-adaptation` 提交到 ModelZoo。`scripts/project_log.py init` 会拒绝覆盖已有日志，并在 Git 工作区的 `.git/info/exclude` 中加入本地排除项。该 JSON 不替代模型工作区必须维护的 `README.md`、`NPU_ADAPTATION.md`、`ACCEPTANCE_PLAN.md`。
+不要把多个项目写入同一个固定文件，也不要把 `.ascend-adaptation` 提交到 ModelZoo。`scripts/project_log.py init` 会拒绝覆盖已有日志，并在 Git 工作区的 `.git/info/exclude` 中加入本地排除项。内部技术事实和验收方案默认也放在同一项目私有目录。窄范围修复复用已有记录；仓库明确要求根目录文档时保留其位置，交付时按文件清单排除。README 按 `workflow-delivery.md` 独立维护。
+
+## 初始化与恢复
+
+```bash
+python3 "$SKILL_DIR/scripts/project_log.py" init \
+  --workspace <工作区> --project-id <category>__<model> \
+  --model-url <URL> --target-path <交付目标路径> \
+  --mode adapt --route undecided --hardware-model unconfirmed
+```
+
+普通适配的 target baseline 表示用户要求的交付位置与约束；无目标仓时 `target_repo_commit=not-applicable`，`target_path_exists` 记录本地目标路径状态。ModelZoo 基线另按交付配置查询。
+
+恢复时先核对实际源码/patch、权重、软件栈、数据、evaluator 与记录是否一致。脚本是记录器，只按字段与成功证据类型检查升级，不能证明命令已执行或证据仍有效；过期记录不得直接支持新结论。当前工具不支持撤销等级，发现影响既有结论的变化时保留原日志，在有变更关联的新项目 ID 中重新记录受影响验证；不删除历史，也不把旧等级抄入新日志。
 
 ## 基本字段
 
@@ -51,4 +64,4 @@ python3 "$SKILL_DIR/scripts/project_log.py" set-status \
 - accuracy/performance 口径、数据 split 或计时边界发生变化。
 - 动态 shape、custom op、cache、长时间编译、依赖冲突、数据生成或许可证问题。
 
-完成后只把用户复现所需结论提炼到 README FAQ；账号、内部路径、临时日志和完整排障历史留在项目日志中。
+进入交付阶段时按 `output-contract.md` 提取用户复现所需事实。公开事实可记录于同目录的 `public-facts.json`；来源/证据关联单独留在内部记录。内部等级、门禁、账号、路径、临时日志与完整排障历史不进入 README。

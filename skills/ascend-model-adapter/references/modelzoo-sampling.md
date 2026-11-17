@@ -1,36 +1,41 @@
-# ModelZoo 采样与离线兜底
+# ModelZoo 样本与意见采集
 
-## 当前快照
+## 本轮可追溯快照
 
-采样日期：2026-07-10。脚本从 GitCode `master` 分类页解析到 162 个可见目录：audio 29、cv 92、nlp 17、ocr 9、embedding 4、foundation_models 7、embodied_ai 4。
+采集日期：2026-11-17。实时 `git ls-remote` 与独立浅克隆 HEAD 均为 `c96a5cb797ef0c1ab9bb6802770571440f040bde`，最后提交日期 2026-11-16。下表为该快照的近期实质变更，不代表以后任务的最新基线。
 
-此数字和“最近更新时间”会快速变化，只用于说明离线快照范围；在线可用时必须重新运行 sampler，并记录 sparse clone 的 HEAD。
+| PR | 精确目标目录（ACL_PyTorch/built-in/ 下） | 已核对的参考价值 |
+|---|---|---|
+| [7769](https://gitcode.com/Ascend/ModelZoo-PyTorch/pull/7769) | embodied_ai/FlashOCC_for_PyTorch | 修复执行分支；少量 parity 和正式任务指标须区分 |
+| [7760](https://gitcode.com/Ascend/ModelZoo-PyTorch/pull/7760) | cv/Trident | 权重、设备感知同步与配置检查；评论中已删除/改动路径不能作当前缺陷 |
+| [7727](https://gitcode.com/Ascend/ModelZoo-PyTorch/pull/7727) | embodied_ai/BevFusion | 多模态/自定义算子交付；AI 因变更过大跳过，不能解释为检视通过 |
+| [7740](https://gitcode.com/Ascend/ModelZoo-PyTorch/pull/7740) | cv/RemoteSAM | 当前 common.py 已加入关键权重检查、路径归一化，部分历史意见已闭环 |
+| [7765](https://gitcode.com/Ascend/ModelZoo-PyTorch/pull/7765) | cv/SmolVLM2 | 当前续跑按选定 ID 去重并纳入历史结果；保留此做法，不把旧 summary 问题当现状 |
+| [7776](https://gitcode.com/Ascend/ModelZoo-PyTorch/pull/7776) | cv/ByteTrack | 核对导出与 decoder 的输出 contract、实际业务依赖；不照搬未实测的多输出猜测 |
+| [7758](https://gitcode.com/Ascend/ModelZoo-PyTorch/pull/7758) | ocr/DBNET（另含 PyTorch/DINO） | 最小导入修复与失败分支检查；CPU 宿主逻辑验证不冒充 NPU 回归 |
 
-## 采样策略
+另读取 PR [7743](https://gitcode.com/Ascend/ModelZoo-PyTorch/pull/7743)（cv/Grounded-SAM-2）、[7742](https://gitcode.com/Ascend/ModelZoo-PyTorch/pull/7742)（cv/EdgeSAM）的 diff 与意见，作为额外线索；未将其声称为本轮 master 的最新已合入模型。
 
-- 先按目标 `--category` 过滤，再用任务/路线 `--keyword` 缩小范围；不要默认 clone 大量无关类别。
-- 同任务/同路线样本优先于纯粹最新样本；必要时再补 1–2 个最新项目了解 README/CI 风格。
-- `--clone-dir` 必须是不存在或空目录。脚本拒绝删除非空目录。
-- 页面解析失败、过滤无结果或 clone 失败时明确报错；不能把历史参考声称为最新。
-- 页面行中的 PR 只是候选信号，必须用 PR diff 验证对应 ModelZoo 路径。
-- sparse clone 默认保留有限提交历史并输出每个目录最后路径变更 commit/date；若显示浅历史不可用，增加 `--history-depth` 或在完整 checkout 上重新查询。还要人工区分实质变更与仓级批量格式/链接更新。
+九个 PR 都已通过各自 diff 核对精确路径。按页码与 end_id/end_system_id 游标采集共 20 页、1664 个讨论条目（含系统事件），去噪去重后保留 203 条记录（含 AI/机器人意见，并非 203 条人工结论）。规则归入统一验收清单、验证契约与风格指南，不另维护检视规则集。
 
-## 2026-07-10 检视样本
+## 采样方法与降级
 
-本轮从 24 个近期目录得到 21 个唯一 PR，并用精确路径映射验证，覆盖：
+- 按任务/路线挑少量近期实质变更，记录路径 commit/date 与原因；新模型、推理链路、环境/评测或结果变更优先，批量格式/链接更新不能作为实质样本。
+- `modelzoo_sampler.py` 的 HTML 解析在本轮返回零条，故改用固定 HEAD 的 Git 历史。不要反复重试旧页面解析器或把离线目录数声称最新。
+- 独立 clone 不覆盖已有工作区；`--clone-dir` 只能用不存在或空目录。按需 sparse-checkout 相关路径，浅历史不足则 deepen，不能用浅边界伪造最后实质变更时间。
 
-- audio：Step_audio2_mini、DiariZen、YingMusic-SVC、Canary-1B。
-- cv：LoFTR、RIFE、InstantID、PromptIR、F3Net、SAM2、SAM3、FocalFormer3D。
-- embodied_ai：IsaacGR00T、vla/pi05、GraspNet。
-- ocr：PaddleOCR-VL-1.5、PP-DocLayoutV2/V3。
-- embedding、nlp、foundation_models：bge 系列、chronos-2、ProtBert、TabPFN、Chinese_CLIP。
+```bash
+git -C <目标仓> rev-parse HEAD
+git -C <目标仓> log -20 --date=iso-strict --format='%H %ad %s' -- ACL_PyTorch/built-in
+git -C <目标仓> log -1 --format='%H %ad %s' -- <参考模型路径>
+```
 
-评论样本暴露的新增通用问题已写入 `pr-review-heuristics.md`：子进程/patch helper 假成功、CLI 多值参数吞 flag、NPU 异步计时、下载到 HTML、生成配置来源、文件名拼写、数据生成边界和当前 head/历史 CI 混淆。
+通过提交正文的关联 PR 和对应 diff 确认路径，不按 PR 标题猜目录。本轮排除了 PR 7741 与猜测目录不匹配的样本。页面列表、提交正文、当前源码与 PR head 是不同快照，应分别记录。
 
-## 抓取边界
+## 评论证据边界
 
-- GitCode HTML/API 可能变化，脚本是 best-effort 获取器，不是权威 PR API。
-- `gitcode_pr_review_sampler.py --pr-path PR=PATH` 默认对 metadata、discussion、diff 和路径证据 fail-closed。
-- `--allow-unverified` 只用于排障；其输出不能形成正式审查结论。
-- 系统事件、push 记录和重复 CI 历史会被过滤/折叠；AI review 失败只表示没有获得意见。
-- 正式结论仍需本地检查当前 PR head 和对应最新流水线。
+- 脚本为 best-effort 获取器；接口结构、总数变化、缺少游标、重复页面、超过分页上限或缺 head 均报告证据缺口。不能用 `--allow-unverified` 输出支撑正式通过结论。
+- 分页必须传递连续游标并核对总数；仅增加 page 会重复获得内容，返回的 total/page_count 也可能造成误判。
+- 评论保留其原始版本语境。先核对当前实现再决定是否仍需修复；历史已修问题可提炼预防性条件，不重复报为当前缺陷。
+- AI 摘要只是线索；例如“空检测一律失败”“strict=False 一律错误”“多输出直接拼接”等建议都须核实模型 contract。CI 仍只认当前 head 对应的具体阶段。
+- 本轮只抓取并静态读取源码与评论，未执行模型代码、安装依赖、NPU 推理、精度或性能验证。已合入与评论“未发现问题”都不等于本 Skill 已复现实测。
