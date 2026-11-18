@@ -4,24 +4,24 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 import re
 import stat
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 from delivery import render_facts
-from project_log import add_git_exclude, slug
+from project_log import ROUTES, add_git_exclude, slug
 
 DEFAULT_IMAGE = None
 DEFAULT_HARDWARE = None
-ROUTES = ["onnx-om", "torch-npu", "torchair", "vllm-ascend", "hybrid"]
 
 
 def infer_name(url: str) -> str:
     parts = [part for part in urlparse(url).path.split("/") if part]
-    name = re.sub(r"\.git$", "", parts[-1] if parts else "model")
-    return re.sub(r"[^A-Za-z0-9_.+-]+", "-", name).strip("-_") or "model"
+    name = re.sub(r"\.git$", "", unquote(parts[-1]) if parts else "model")
+    return re.sub(r"[^\w.+-]+", "-", name).strip("-_") or "model"
 
 
 def atomic_write(path: Path, content: str, executable: bool = False) -> None:
@@ -58,7 +58,7 @@ def readme(model: str, url: str, image: str | None, hardware: str | None) -> str
 
 def export_onnx(model: str) -> str:
     return f'''#!/usr/bin/env python3
-"""Export {model} to ONNX after replacing the model-specific TODO."""
+{('Export ' + model + ' to ONNX after replacing the model-specific TODO.')!r}
 
 import argparse
 from pathlib import Path
@@ -89,36 +89,45 @@ if [ -z "${SOC_VERSION}" ]; then
   echo "ERROR: set SOC_VERSION" >&2
   exit 2
 fi
-INPUT_SHAPE=${INPUT_SHAPE:-"TODO_input:1,3,224,224"}
-INPUT_FORMAT=${INPUT_FORMAT:-NCHW}
-PRECISION_MODE=${PRECISION_MODE:-mixed_float16}
-source /usr/local/Ascend/ascend-toolkit/set_env.sh
+if [ -z "${INPUT_SHAPE:-}" ] || [[ "${INPUT_SHAPE}" == *TODO* ]]; then
+  echo "ERROR: set INPUT_SHAPE to the exported model's actual input names and shapes" >&2
+  exit 2
+fi
+if [ ! -f "${ONNX_PATH}" ]; then
+  echo "ERROR: ONNX file does not exist: ${ONNX_PATH}" >&2
+  exit 2
+fi
+compile_options=()
+if [[ -n "${INPUT_FORMAT:-}" ]]; then
+  compile_options+=("--input_format=${INPUT_FORMAT}")
+fi
+if [[ -n "${PRECISION_MODE:-}" ]]; then
+  compile_options+=("--precision_mode_v2=${PRECISION_MODE}")
+fi
+ASCEND_ENV_SCRIPT=${ASCEND_ENV_SCRIPT:-/usr/local/Ascend/ascend-toolkit/set_env.sh}
+source "${ASCEND_ENV_SCRIPT}"
 atc --framework=5 --model="${ONNX_PATH}" --output="${OUTPUT_PREFIX}" \
   --soc_version="${SOC_VERSION}" --input_shape="${INPUT_SHAPE}" \
-  --input_format="${INPUT_FORMAT}" --precision_mode_v2="${PRECISION_MODE}"
+  "${compile_options[@]}"
 """
 
 
 def infer(model: str, route: str) -> str:
     return f'''#!/usr/bin/env python3
-"""Optional {model} inference entry; prefer patching an upstream entry."""
+{('Optional ' + model + ' inference entry; prefer patching an upstream entry.')!r}
 
 import argparse
-import importlib
-from pathlib import Path
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="{model} inference")
+    parser = argparse.ArgumentParser(description={(model + ' inference')!r})
     parser.add_argument("--model-path", required=True)
     parser.add_argument("--input", required=True)
     parser.add_argument("--output", default="outputs")
     parser.add_argument("--device", choices=["npu", "cpu"], default="npu")
     args = parser.parse_args()
-    Path(args.output).mkdir(parents=True, exist_ok=True)
     if args.device == "npu":
-        importlib.import_module("torch_npu")
-        raise NotImplementedError("TODO: implement NPU inference for route={route}")
+        raise NotImplementedError("TODO: implement NPU inference and route-specific dependencies for route={route}")
     raise NotImplementedError("TODO: implement explicit CPU/upstream fallback")
 
 
@@ -127,7 +136,8 @@ if __name__ == "__main__":
 '''
 
 
-def npu_adaptation(model: str, url: str, category: str, profile: str) -> str:
+def npu_adaptation(model: str, url: str, category: str, profile: str,
+                   route: str, hardware: str | None, image: str | None) -> str:
     target_scope = (
         f"ModelZoo 目标路径：`ACL_PyTorch/built-in/{category}/{model}`；master/路径状态/样本/贡献门禁：TODO"
         if profile == "modelzoo" else "用户交付目标和验证范围：TODO；ModelZoo 上库约束不适用。"
@@ -150,7 +160,10 @@ def npu_adaptation(model: str, url: str, category: str, profile: str) -> str:
 
 ## 适配与验证事实
 
-- 设备节点、route 和 patch：TODO
+- 初始化所选路线：{route}
+- 指定硬件：{hardware or "未指定"}
+- 指定镜像：{image or "未指定"}
+- 实际设备、环境、路线探针结果和 patch：待记录
 - 依赖/import/py_compile/help：TODO
 - 权重/数据路径与校验：TODO
 - CPU/CUDA/NPU 已执行命令和结果：TODO
@@ -169,7 +182,16 @@ def npu_adaptation(model: str, url: str, category: str, profile: str) -> str:
 """
 
 
-def acceptance_plan(model: str) -> str:
+def acceptance_plan(model: str, scope: str | None, profile: str) -> str:
+    if scope or profile == "generic":
+        return f"""
+# {model} 验收方案与结果
+
+- 本轮验收目标：{scope or "按用户要交付的结果确定"}
+- 适用的模型版本、权重、输入与执行环境：待记录
+- 验证命令、实际设备、输出和判定依据：待记录
+- 执行结果与尚缺条件：待记录
+"""
     return f"""
 # {model} 验收方案与结果
 
@@ -191,9 +213,10 @@ TODO：干净环境安装、真实权重/输入、CPU/CUDA/NPU 端到端命令�
 
 ## L2 精度/质量与性能（S3）
 
-TODO：NPU evaluator、自动 compare、阈值来源；公开基线不可比或 patch 改语义时补 CPU 精度对照。
+TODO：可交付的同一部署版本、原始精度结果及实际读取它的 compare、阈值来源和独立参照。
+对照与候选共用改过的预后处理时，保留未改上游样例或独立标注，检查双方一起出错的情况。
 
-性能至少独立执行 3 次，保存每次结果并报告中位数；说明 pure model/E2E、同步、warmup、batch/并发和峰值 HBM。
+同一部署的正式性能至少独立执行 3 次，保存每次结果并报告中位数；按照用户要求的负载与计时边界验收。
 
 ## 扩展验收（S4，可选）
 
@@ -211,9 +234,10 @@ TODO：长稳、L3、业务集、并发或用户明确扩展项。
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("model_url")
+    parser.add_argument("model_url", help="Upstream source or existing model artifact URL/path")
     parser.add_argument("output_dir", type=Path)
     parser.add_argument("--model-name")
+    parser.add_argument("--validation-goal", help="Requested acceptance outcome for workspace notes")
     parser.add_argument("--category", required=True)
     parser.add_argument(
         "--layout",
@@ -229,14 +253,16 @@ def main() -> int:
     parser.add_argument("--internal-dir", type=Path, help="Internal docs directory, relative to output or absolute")
     parser.add_argument("--with-readme", action="store_true", help="Explicitly create a public README draft")
     parser.add_argument("--with-infer", action="store_true")
-    parser.add_argument("--force", action="store_true")
+    writes = parser.add_mutually_exclusive_group()
+    writes.add_argument("--force", action="store_true", help="Replace generated files, including existing implementations")
+    writes.add_argument("--missing-only", action="store_true", help="Create only absent files; preserve existing implementations and docs")
     args = parser.parse_args()
 
     model = args.model_name or infer_name(args.model_url)
     output = args.output_dir
     files = {
         output / "requirements.txt": (
-            "# Business dependencies only. Keep the image-provided torch stack intact.\n"
+            "# Model dependencies only. Preserve the target environment's runtime stack.\n"
         ),
     }
     if args.layout == "target" or args.with_readme:
@@ -244,19 +270,28 @@ def main() -> int:
             model, args.model_url, args.image, args.hardware_model
         )
     if args.layout == "workspace":
-        project_id = slug(args.project_id or f"{args.category}__{model}")
+        raw_id = f"{args.category}__{model}"
+        if not args.project_id and not raw_id.isascii():
+            # Keep distinct display names even when ASCII normalization drops them.
+            raw_id += "-" + hashlib.sha256(raw_id.encode()).hexdigest()[:12]
+        project_id = slug(args.project_id or raw_id)
         internal = args.internal_dir or Path(".ascend-adaptation") / project_id
         if not internal.is_absolute():
             internal = output / internal
         files[internal / "NPU_ADAPTATION.md"] = npu_adaptation(
-            model, args.model_url, args.category, args.profile
+            model, args.model_url, args.category, args.profile, args.route,
+            args.hardware_model, args.image
         )
-        files[internal / "ACCEPTANCE_PLAN.md"] = acceptance_plan(model)
+        files[internal / "ACCEPTANCE_PLAN.md"] = acceptance_plan(model, args.validation_goal, args.profile)
     executable: set[str] = set()
     if args.route == "onnx-om":
-        files[output / "export_onnx.py"] = export_onnx(model)
-        files[output / "convert_om.sh"] = convert_om()
-        executable.update({"export_onnx.py", "convert_om.sh"})
+        suffix = Path(urlparse(args.model_url).path).suffix.lower()
+        if suffix not in {".onnx", ".om"}:
+            files[output / "export_onnx.py"] = export_onnx(model)
+            executable.add("export_onnx.py")
+        if suffix != ".om":
+            files[output / "convert_om.sh"] = convert_om()
+            executable.add("convert_om.sh")
     if args.with_infer:
         files[output / "infer.py"] = infer(model, args.route)
         executable.add("infer.py")
@@ -264,7 +299,7 @@ def main() -> int:
     collisions = [
         path for path in files if path.exists() or path.is_symlink()
     ]
-    if collisions and not args.force:
+    if collisions and not (args.force or args.missing_only):
         raise FileExistsError(
             "Refusing partial scaffold write; existing files: "
             + ", ".join(str(path) for path in collisions)
@@ -273,11 +308,16 @@ def main() -> int:
     for path in files:
         if any(parent.is_symlink() for parent in [path, *path.parents]):
             raise ValueError(f"Refusing to write through symbolic link: {path}")
+        if path.exists() and not path.is_file():
+            raise ValueError(f"Expected a file, found another filesystem entry: {path}")
+    if args.missing_only:
+        files = {path: content for path, content in files.items() if not path.exists()}
     output.mkdir(parents=True, exist_ok=True)
     for path, content in files.items():
         atomic_write(path, content, path.name in executable)
     if args.layout == "workspace":
-        add_git_exclude(output)
+        add_git_exclude(output, internal if args.internal_dir else None)
+        print(f"Project ID: {project_id}")
 
     print(f"Created scaffold: {output}")
     print(f"Route: {args.route}; layout: {args.layout}")

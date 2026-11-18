@@ -22,7 +22,7 @@ PUBLIC_FIELDS = {
     "evaluation", "limitations", "faq", "sources",
 }
 PRIVATE_NAMES = {
-    ".ascend-adaptation", "worklog.json", "npu_adaptation.md",
+    ".ascend-adaptation", "worklog.json", "worklog.lock", "npu_adaptation.md",
     "acceptance_plan.md", "public-facts.json", "publication-provenance.json",
     "candidate-files.json", "delivery-report.json", ".git", "__pycache__",
     ".cache", "upstream", ".codex-reference",

@@ -1,4 +1,4 @@
 interface:
   display_name: "Ascend Model Adapter"
   short_description: "适配与验证昇腾 NPU 模型，整理用户文档或审查适配工程"
-  default_prompt: "使用 $ascend-model-adapter 完成这个模型的昇腾 NPU 适配与验证，并提供可复现的运行说明。"
+  default_prompt: "使用 $ascend-model-adapter 在指定的 Ascend NPU 上跑通这个模型的推理样例，并给出可复现的命令和输出。"

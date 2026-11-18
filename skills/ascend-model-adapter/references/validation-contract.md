@@ -1,85 +1,66 @@
-# 内部验证、证据与状态契约
+# 验证适配结果
 
-本文件统一定义内部技术等级和验收条件。等级、就绪状态、门禁进度与证据位置写在内部记录或用户要求的报告中；README 只公开 `output-contract.md` 允许的事实。普通任务按用户要求验收；“上库候选就绪”仅适用于明确的 ModelZoo 交付。
+先写出要对外承担的具体结论，例如“这个 OM 在两档业务输入上复现原输出”，或“这个部署在指定到达率下满足质量与延迟要求”。选择能推翻这句话的观测。用户仅要求功能样例时，真实输入、实际执行位置和可解释的输出就可以交差。
 
-## S0–S4 技术状态
+## 谁提供正确答案
 
-| 状态 | 项目日志必需成功证据 | 允许的结论 |
+| 可以拿到的参照 | 能回答的问题 | 使用方法 |
 |---|---|---|
-| 未定级 | 仅初始化日志 | 已建项目，不能写“分析完成” |
-| S0 分析完成 | `target_baseline`、`upstream_audit`；目标仓/上游/权重已冻结 | 完成适配分析 |
-| S1 静态适配完成 | `static_check`；需要 patch 时另有 `patch_check` | 静态门禁通过 |
-| S2 功能验证完成 | route/硬件已确认；`functional_inference`：CPU/CUDA/NPU 至少一条真实端到端输出 | 指定设备功能链路实测通过 |
-| S3 L2 迁移对齐完成 | `npu_accuracy`、`npu_performance`、`comparison_report` | NPU L2 精度/质量和性能对齐通过 |
-| S4 扩展验收通过 | `extended_validation` | 用户要求的长稳、L3 或业务扩展验收通过 |
+| 原任务标签、官方 evaluator 及同口径公开结果 | 最终任务质量达到什么水平 | 固定权重、完整 split、normalizer、预后处理与解码设置。只对可比指标作结论；保留每个样本或官方可复核的原始结果。 |
+| 未改上游的输出、发布者样例，或变更前保存的中间结果 | 这次替换改变了哪些行为 | 同一原始输入从入口重放。先比共享预处理的输出，再比模型原始输出与最终解码。未改上游可运行在 CPU、已有 GPU 或之前的可信环境。 |
+| 只有改动后的 CPU 和 NPU 两条分支 | 仅这套实现的两个后端是否一致 | 若两边共用本次改过的 tokenizer、归一化、后处理或标签映射，再找独立来源验证该部分。例如两端都把归一化波形提前转成整数，两端差值仍可为零。独立参照暂缺时，交付已测的后端一致性和剩余缺口。 |
 
-`set-status` 只允许依次设置 S0→S4。失败证据必须保留真实非零退出码，不能解锁状态。dummy/单条样例最多支持 S2；文档、patch、compile 最多支持 S1。
+若一次提交同时换了后端、降了精度、改了算子，先比较未改上游与补丁后的参考路径，再比较尽量同精度的后端，最后开优化。复用已有结果，只补能区分原因的那一对；受硬件限制而无法拆开时，差异只能归因到这组变更。
 
-## 上库候选就绪
+按变更挑有区分度的输入。会动 padding/mask，可比较同一句单独推理和与长句混批时的有效 token；改 cache，可比较相同前缀下的逐步解码与完整 forward。只有上游保证该性质时才据此判错。随机生成先固定输入、噪声或相同前缀隔离单步差异，最终用任务质量或重复采样的分布判断；两段自由生成文本不同本身不足以定位数值错误。[行为测试方法 CheckList](https://aclanthology.org/2020.acl-main.442/)、[PyTorch 导出数值验证](https://docs.pytorch.org/docs/2.15/onnx_verification.html)
 
-技术状态与上库就绪分开：
+### 同一输入的模型原始输出已经偏离
 
-- 至少达到 S3。
-- `target_audit` 必须包含 `tools/audit_model_delivery.py <model_dir> --target-readiness --target-path ...` 或目标仓等价门禁。
-- `clean_room_replay` 必须从独立候选目录按 README 重放最低正式路径，不读取内部记录、未声明的开发 checkout/cache 或环境变量；允许按 README 的固定 URL/revision 获取上游源码和依赖。
-- 满足后才运行 `project_log.py set-target-ready`。正式合入仍只能由目标仓 PR merged/commit 证明。
+固定权重、输入和解码步，先按实际执行顺序对齐少数模块边界。eager 可临时加 forward hook，记下模块名、调用序号及消费的输出字段；融合图或 OM 可取目标工具支持的中间输出。先比原始 shape、layout 和有限值，再按任务口径比较幅值和方向。余弦相似度可能掩盖整体缩放。找到输入相符而输出偏离的模块，取同一输入单独重放；有残差或多分支时检查汇合点各个输入，后层误差可能抵消。定位后移除采集逻辑，用原部署配置复测端到端输出与指标。[上游逐层精度对齐](https://gitcode.com/Ascend/model-agent/blob/c75448c13fb4a35e7ec0883ce48d05c23eb5b7fa/skills/adaptation/layerwise-precision-alignment/SKILL.md)
 
-## 每条证据至少记录
+## 先验证评测能发现错误
 
-- 类型、时间、完整命令、退出码和可验证 claim。
-- 目标仓 commit、源码 commit/PR head、权重 revision/SHA、镜像 tag/digest。
-- 对外硬件型号、CANN、Python、torch/torch_npu 和路线相关工具版本。
-- 日志路径；权重、manifest、ONNX、OM、配置或结果文件 SHA256。
-- 数据集版本/split、样本数、过滤规则、评测脚本 revision 和输出目录。
+新写、改过或第一次接手决定交付的 compare / 聚合 / 续跑逻辑时，先在结果副本上做一次小实验。官方 evaluator 已有覆盖时直接复用，重点验证自己接入的数据、阈值与退出条件。
 
-S0 前冻结的目标仓/上游/权重上下文不能在同一日志中静默改变；需要新 baseline 时创建新的项目日志。S2 后 route/硬件改变同样需要新日志，避免旧证据继续解锁状态。
+1. **用已知结果校准。** 顺着 manifest 的稳定 ID 手算一个小集合的期望指标。原样输入应得到这个值。再把足够多的答案改错，让指标按预期方向跨过事先确定的阈值，检查正式验收入口确实拒绝。只负责打分的官方工具可以正常退出，判定由读取分数的验收入口承担。
+2. **让两个输出同时漏掉同一项。** 用原始 manifest 核对每个期望 ID 的结果和错误状态。参考与候选的 ID 集可以完全相同却一起漏算。续跑时合并该配置下新旧结果，检查重复、错配和缺失。官方协议若允许过滤或规定错误计分，按协议报告分母和覆盖。零个有效比较、不可解释的 NaN/Inf、缺失任务必需字段均无法判定达标；合法空检测照常计分。
+3. **沿故障选择下一步。** 负对照也通过，先修评测并用已保存的预测重算。原始预测完整时无需重新占卡；只缺部分有效 ID 时按相同配置补缺项。若原始输入、推理语义或生成配置改变，重跑受影响的预测。独立测试测量基础设施的依据见 [Google Rules of ML，第 5 条](https://developers.google.com/machine-learning/guides/rules-of-ml/#rule_5_test_the_infrastructure_independently_from_the_machine_learning)。
 
-## 验证层级
+**直接复核已有 JSON。** 若原生报告只有分数，可以在 CPU 上应用业务判据。以下例子仅适用于确定性短答案：先确认参照答案来自原 manifest、逐项核对 ID，再从该 manifest 得到 `EXPECTED_COUNT`。两个顶层字段是示例报告的原名。
 
-1. **S0 分析**：用户交付目标、upstream/权重/官方测试集与指标；ModelZoo 任务额外检查实时 master、路径、样本和贡献门禁。
-2. **S1 静态**：patch check、语法、lint、冲突标记、路径、下载 check 与适用的内部验证记录；交付时另检查用户文档和候选清单。
-3. **S2 功能**：干净环境安装、权重/功能输入、真实端到端输出；注明实际 device/provider。
-4. **S3 L2**：NPU 完整精度/质量、NPU 性能、自动 compare 和报告；官方公开基线不可比或 patch 改语义时补 CPU 精度对照。
-5. **S4 扩展**：并发、长稳、错误请求、cache 冷热、L3/业务集等用户明确项。
+```bash
+python3 "$SKILL_DIR/scripts/project_log.py" check-report compare.json \
+  --require sample_count eq "$EXPECTED_COUNT" --require content_exact_rate eq 1
+```
 
-## 性能计时
+该命令无需项目日志。退出 0 表示文件内所声明的条件成立，1 表示已有测量违反条件，2 表示缺字段、类型/数值无效或无法判定。对现有服务报告可按用户原口径检查 `--require p95_e2e_ms lt 150`；报告只有轮耗时就会指出缺项。若报告带顶层 `passed`，其值须为 JSON 布尔值，`false` 会阻止通过。重复字段会使报告无效。十进制指标按文件中写出的数值比较；若 evaluator 已经四舍五入，要验证临界差异需取其原始精度结果。复杂指标继续用该任务的官方 evaluator，分母、参考答案、负载和单位仍须回到原始材料核实。
 
-- NPU 操作异步。纯模型/设备计时前后 synchronize；端到端计时明确数据、排队、后处理、网络和异步完成边界。
-- 参数拒绝 `loop <= 0`、`record <= 0`、空数据集和非法 batch。
-- 首次编译/cache miss 与稳定阶段分开。
-- 正式性能至少独立执行 3 次，报告中位数；同时保留每次结果、样本数，适用时补分位数和峰值 HBM。
-- CPU 性能不用于推断 NPU 加速比。
-- 同步目标与实际执行的后端/逻辑设备一致，不能只同步默认设备；输入或分支跳过某子模型时记录实际执行范围，不能仍称整链路性能。
+阈值与方向在看最终候选分数前确定，优先使用官方容差或用户目标；工程容差用独立基线波动、dtype 误差和业务影响校准。在调参样本上选出的阈值或量化参数，需用保留样本或正式 split 验证。未约定合格线可以报告测量值和差异。汇总指标一样仍可能有样本变好和变坏相互抵消。若承诺长输入、特定语言或工具调用等行为，在同一批 ID 上列出退化案例并检查相关子集。结论落在重复运行波动内时报告不确定性；只复现固定评测集的确定分数时无需增加统计试验。
 
-## 精度结论
+## 同一个部署能否同时兑现质量与性能
 
-- 直接对齐官方指标必须保持 checkpoint、完整数据集/split、配置、随机种子、预后处理和 evaluator 一致。
-- 替换权重、tokenizer、聚类、阈值或子模型后重新跑任务指标，并声明不可直接比较项。
-- 公开基线不可比、patch 改变算法语义或需要隔离版本漂移时，补同环境 `--device cpu` 精度对照；CPU 对照不用于性能。
-- 小样例、输出文件或截图不能冒充任务精度。
-- CUDA 对照是可选增强，不强制具备 GPU。公开基线未发布时明确说明，选用的固定集/CPU 对照只支持相应迁移对齐结论，不能冒充官方指标复现。
-- 对比结果按稳定样本/session ID 对齐，CPU/NPU 保持同一 manifest、预后处理与参数，写独立结果；报告入口输出实际指标、差异与通过判定，不能只有验收计划。
-- 续跑汇总基于当前声明样本集合的全部有效结果，按稳定 ID 去重；部分续跑或全部已完成时不能只统计本次新样本，更不能以零覆盖已有总结果。记录损坏行/跳过项和覆盖率，避免成功标识掩盖缺失结果。
-- 区分合法的单样本空预测与无有效比较：空评测集、NaN/Inf 或未执行核心分支不支持“精度对齐通过”。空预测按官方指标语义处理，不能无依据填零或要求每张图必有检测框。
-- 改为仅从 config 初始化子模型时，验证 checkpoint 关键权重确实覆盖。允许的 missing/unexpected keys 须有模型依据；不能让随机初始化关键模块在仅告警后继续产出验收数字。
-- 多输出 ONNX/OM 按导出 contract 核对名称、数量、shape、dtype 与 decoder 预期；不因历史代码只取 outputs[0] 就假定单输出，也不照评论建议盲目拼接。
+把每次实测追到**实际加载**的权重、实现/patch 或 OM、运行栈、硬件与影响推理语义的生效设置（如 dtype、量化、解码上限）。优先读取运行输出、模型 sidecar 或服务启动记录。质量可以用完整评测集，性能可以走另一次负载测试；两者要指向准备交付的同一实现和有效配置。若质量来自 BF16、吞吐来自 INT8，分别保留已有结果，选择最终部署后仅补它缺的那一项。MLPerf 对被测系统与不同运行模式的区分可借鉴，任务按自己的业务协议验收。[MLPerf Inference Rules](https://github.com/mlcommons/inference_policies/blob/master/inference_rules.adoc)
 
-## 阈值和按类型补验
-
-阈值依次参考官方容差、baseline 重复运行波动、patch 前后同设备误差、已验证 dtype/backend 的工程容差。初始建议值标为暂定并待 baseline 校准，不能直接作为“通过”的依据。随机训练或动态 benchmark 按任务记录 seed、重复运行与方差；不为普通推理追加训练验收。
-
-只读取和执行模型实际涉及的行：
-
-| 模型/执行形态 | 关键补验 |
+| 要回答的问题 | 怎样测量或复核 |
 |---|---|
-| ORT / provider | 固定 ONNX SHA；核实实际 session provider，必要时用 profiling 查关键节点 CPU 分区，不仅看可用列表 |
-| Transformers / embedding | model/tokenizer/remote-code 固定 revision；同样本单条与 padding batch 对齐；embedding smoke 不替代下游任务指标 |
-| vLLM / 服务 | server/client/benchmark 模型名一致，context 与固定 prompt 规模真实；结构化输出、tool/reasoning/streaming 按交付功能检查 |
-| Agent / 外部工具 | 固定框架、配置、数据、judge/工具版本、context/并发和运行次数；服务 smoke 不等同完整 agent benchmark |
-| ASR / diarization | 固定 manifest/reference/UEM、normalizer、collar/overlap；evaluator 依赖可导入，结果按稳定 ID 对齐 |
+| 离线跑一批能有多快 | 固定样本规模、shape/batch 和有效输出，分开模型与端到端计时。纯设备路径预热，在实际设备上同步计时边界；首次编译与稳态单列。正式性能至少独立执行三次，保留原始结果并报告中位数。空输入、无效 loop 或跳过子模型时按实际范围处理。CPU 数据只作精度对照，不用来外推 NPU 性能。 |
+| 在线服务能否满足延迟要求 | 复现用户的到达率/并发、输入及输出长度分布、缓存和流式条件。按请求保留端到端耗时或等价的原生分位统计，核对提交数、完成数、错误与超时；分别统计首 token、后续 token 或完整响应中用户关心的量。整轮时间除以请求数不能恢复 p95；要求限时吞吐时统计单位墙钟时间内满足约束的请求数。[vLLM 负载与 goodput 参数](https://docs.vllm.ai/en/stable/cli/bench/serve/) |
+| 下一步优化哪里最有价值 | 截取代表性慢请求或稳态迭代，沿关键路径区分排队、预处理、拷贝、主模型和后处理。例：在一个无重叠的 100 ms 请求里模型只占 20 ms，哪怕模型耗时降到零也达不到 60 ms；优先查剩余 80 ms。有流水线或多卡重叠时用时间线判断，避免直接相加算子时长。优化后关闭 profiler 重测原业务指标。[昇腾推理分析工具选型](https://github.com/Ascend/msit/blob/master/docs/en/user_guide/msit_user_guide.md) |
 
-生成式首 token 分叉可能级联，token agreement 只用于定位，结合任务质量指标判断。多卡交付另记录实际卡数、挂载、rank/HCCL 与网络配置，不为单卡任务增加多卡门禁。
+## 特定模型才需的补验
 
-## 证据失效
+- ONNX/OM 按名称、数量、shape、dtype 及下游实际消费核对多输出；ORT 节点放置见[路线选择](route-selection.md)。仅从 config 初始化的模块核对 checkpoint 的实际加载覆盖，关键权重缺失须处理。
+- embedding 相似度支持表征对齐；声称下游性能时用对应任务评测。ASR/diarization 固定 manifest、reference/UEM、normalizer、collar/overlap 与 evaluator。
+- 服务核对响应来自本次实例，按交付功能验证结构化输出、stream 或工具调用。Agent 的端到端指标还依赖外部工具、judge 版本和成功率。多卡场景核对实际卡数、rank/HCCL 与网络配置。
 
-源码/patch、权重/config、镜像核心栈、目标硬件、数据 split、evaluator、性能参数或计时实现变化会使对应证据失效。README 与 PR 公布的版本、命令、指标和限制必须追溯到当前有效证据；不把内部状态同步到用户文档。`project_log.py` 不自动检测这些变化；恢复与变更处理按 `adaptation-process-log.md`，不能把记录器通过当成证据有效性证明。
+## 需要内部等级或上库时
+
+| 历史等级 | 对应证据与范围 |
+|---|---|
+| S0 | 冻结目标、上游与权重，`target_baseline`、`upstream_audit`。 |
+| S1 | `static_check`，需要 patch 时含 `patch_check`。 |
+| S2 | `functional_inference` 记录真实端到端输出和实际 device/provider；结论限于实测设备与输入。 |
+| S3 | 同一部署的 `npu_accuracy`、`npu_performance` 和读取该次质量结果的 `comparison_report`，内容符合上述业务验收。 |
+| S4 | 同一部署的 `extended_validation`，覆盖用户约定的长稳、多并发或业务集。 |
+
+项目日志逐级复核前置证据；文件绑定、复核旧日志与变更规则见[日志操作](adaptation-process-log.md)。S3/S4 加上当前候选的目标仓审计与干净环境重放才可标记上库就绪；按目标仓运行 `tools/audit_model_delivery.py <model_dir> --target-readiness --target-path ...` 或等价门禁。重放只使用候选及 README 声明的依赖。合入由目标仓 merged/commit 证明。内部等级只进入私有记录或用户要求的报告。

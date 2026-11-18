@@ -128,7 +128,7 @@ class QuickcheckTests(unittest.TestCase):
             )
             self.assertEqual(1, len(self.module.check_conflict_markers(root, [target])))
 
-    def test_review_patterns_catch_false_success_and_blob_download(self):
+    def test_review_patterns_flag_failure_handling_and_allow_source_links(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             target = root / "ACL_PyTorch/built-in/cv/Demo"
@@ -140,14 +140,13 @@ class QuickcheckTests(unittest.TestCase):
             (target / "run.py").write_text(
                 "import subprocess\nsubprocess.run(['false'])\n", encoding="utf-8"
             )
-            messages = [
-                finding.message
-                for finding in self.module.check_review_patterns(root, target)
-            ]
+            findings = self.module.check_review_patterns(root, target)
+            messages = [finding.message for finding in findings]
             self.assertTrue(any("child failure" in message for message in messages))
-            self.assertTrue(any("download HTML" in message for message in messages))
+            self.assertTrue(any("HTML" in message for message in messages))
+            self.assertFalse(any(finding.level == "ERROR" for finding in findings))
 
-    def test_modelzoo_constraints_catch_device_and_runtime_download(self):
+    def test_ambiguous_device_and_data_calls_require_content_review(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             target = root / "ACL_PyTorch/built-in/cv/Demo"
@@ -157,14 +156,31 @@ class QuickcheckTests(unittest.TestCase):
                 'data = datasets.load_dataset("demo")\n',
                 encoding="utf-8",
             )
-            messages = [
-                finding.message
-                for finding in self.module.check_modelzoo_constraints(root, target)
-            ]
-            self.assertTrue(any("hard-coded device" in message for message in messages))
+            findings = self.module.check_modelzoo_constraints(root, target)
+            messages = [finding.message for finding in findings]
+            self.assertTrue(any("indexed device" in message for message in messages))
             self.assertTrue(
-                any("embeds an online data download" in message for message in messages)
+                any("data-loading API" in message for message in messages)
             )
+            self.assertTrue(all(finding.level == "INFO" for finding in findings))
+
+    def test_valid_historical_names_and_source_link_do_not_fail_strict_cli(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            target = root / "Demo"
+            target.mkdir()
+            (target / "dscore_tool").mkdir()
+            (target / "run_eval.sh").write_text("#!/bin/sh\nexit 0\n")
+            (target / "README.md").write_text(
+                "# Demo\n\nbash run_eval.sh\n\nEvaluator: dscore_tool/\n\n"
+                "[Source](https://huggingface.co/org/repo/blob/main/model.bin)\n"
+            )
+            result = subprocess.run(
+                [sys.executable, str(SCRIPTS / "modelzoo_pr_quickcheck.py"),
+                 str(root), "--target", "Demo", "--no-ruff", "--strict"],
+                capture_output=True, text=True,
+            )
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
 
 class ScaffoldTests(unittest.TestCase):
@@ -336,25 +352,11 @@ class ProjectLogTests(unittest.TestCase):
                 )
                 self.assertEqual(0, evidence.returncode, evidence.stderr)
             s3 = self.run_log("set-status", *common, "--status", "S3")
-            self.assertEqual(0, s3.returncode, s3.stderr)
+            # These legacy records are just labels and exit codes.
+            self.assertNotEqual(0, s3.returncode)
+            self.assertIn("native result", s3.stderr)
             not_ready = self.run_log("set-target-ready", *common)
             self.assertNotEqual(0, not_ready.returncode)
-            for evidence_type in ("target_audit", "clean_room_replay"):
-                evidence = self.run_log(
-                    "add-evidence",
-                    *common,
-                    "--type",
-                    evidence_type,
-                    "--command",
-                    evidence_type,
-                    "--exit-code",
-                    "0",
-                    "--claim",
-                    f"{evidence_type} passed",
-                )
-                self.assertEqual(0, evidence.returncode, evidence.stderr)
-            ready = self.run_log("set-target-ready", *common)
-            self.assertEqual(0, ready.returncode, ready.stderr)
 
 
 if __name__ == "__main__":

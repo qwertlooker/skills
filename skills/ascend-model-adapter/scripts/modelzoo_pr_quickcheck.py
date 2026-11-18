@@ -2,7 +2,8 @@
 """Quick local checks for Ascend ModelZoo PR review.
 
 This script intentionally runs only cheap, source-level checks. It does not
-replace patch dry-run, data dry-run, or real NPU accuracy/performance tests.
+review documentation or implementation semantics, replace patch/data dry-run,
+or certify real NPU accuracy/performance tests.
 """
 
 from __future__ import annotations
@@ -61,7 +62,7 @@ def check_conflict_markers(root: Path, paths: list[Path]) -> list[Finding]:
             except OSError:
                 continue
             conflict = re.search(
-                r"^<<<<<<< .*$.*?^=======$.*?^>>>>>>> .*$", text, flags=re.M | re.S
+                r"^<<<<<<< .*$.*?^=======$.*?^>>>>>>> .*$", text, flags=re.MULTILINE | re.DOTALL
             )
             if conflict:
                 line = text.count("\n", 0, conflict.start()) + 1
@@ -136,9 +137,10 @@ def run_ruff(target: Path) -> list[Finding]:
     if ruff is None:
         return [Finding("WARN", "ruff not found; skip lint quickcheck")]
     proc = subprocess.run(
-        [ruff, "check", str(target), "--output-format=concise"],
+        [ruff, "check", str(target), "--output-format=concise", "--no-cache",
+         "--no-fix", "--no-fix-only"],
         text=True,
-        capture_output=True,
+        check=False, capture_output=True,
     )
     if proc.returncode == 0:
         return []
@@ -147,38 +149,11 @@ def run_ruff(target: Path) -> list[Finding]:
     return [Finding("ERROR", f"ruff failed: {summary}")]
 
 
-def check_stale_commands(root: Path, target: Path) -> list[Finding]:
-    findings: list[Finding] = []
-    for path in target.rglob("*"):
-        if (
-            "__pycache__" in path.parts
-            or not path.is_file()
-            or path.suffix.lower() not in {".md", ".py", ".sh"}
-        ):
-            continue
-        text = path.read_text(encoding="utf-8", errors="ignore")
-        if "run_eval.sh" in text:
-            findings.append(
-                Finding(
-                    "ERROR",
-                    f"{rel(path, root)}: references run_eval.sh; ensure the script exists or remove it",
-                )
-            )
-        if "dscore_tool/" in text:
-            findings.append(
-                Finding(
-                    "ERROR",
-                    f"{rel(path, root)}: references dscore_tool/; verify actual tool/submodule path",
-                )
-            )
-    return findings
-
-
 def _argparse_defaults(path: Path) -> dict[str, object]:
     defaults: dict[str, object] = {}
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"))
-    except Exception:
+    except (OSError, UnicodeError, SyntaxError):
         return defaults
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
@@ -212,7 +187,7 @@ def check_batch_size_consistency(root: Path, target: Path) -> list[Finding]:
         for x in re.findall(
             r"(?:默认|default)[^\n]{0,40}?batch[_-]?size\s*[=：]\s*(\d+)",
             text,
-            flags=re.I,
+            flags=re.IGNORECASE,
         )
     }
     if not mentioned:
@@ -303,8 +278,8 @@ def check_review_patterns(root: Path, target: Path) -> list[Finding]:
         if "huggingface.co" in text and "/blob/" in text:
             findings.append(
                 Finding(
-                    "ERROR",
-                    f"{rel(path, root)}: Hugging Face /blob/ URL may download HTML",
+                    "INFO",
+                    f"{rel(path, root)}: Hugging Face /blob/ URL; valid as a source link, but verify download commands do not save HTML",
                 )
             )
     return findings
@@ -314,7 +289,7 @@ def check_template_placeholders(root: Path, target: Path) -> list[Finding]:
     findings: list[Finding] = []
     placeholder = re.compile(
         r"<(?:container-name|宿主机工程目录|upstream[^>]*|fixed-commit|checkpoint[^>]*|soc-version|target[^>]*)>",
-        flags=re.I,
+        flags=re.IGNORECASE,
     )
     for path in target.rglob("*"):
         if not path.is_file() or path.suffix.lower() not in {
@@ -349,8 +324,8 @@ def check_modelzoo_constraints(root: Path, target: Path) -> list[Finding]:
             if device in text:
                 findings.append(
                     Finding(
-                        "ERROR",
-                        f"{rel(path, root)}: hard-coded device {device}; use visibility env vars",
+                        "INFO",
+                        f"{rel(path, root)}: indexed device {device}; verify logical index vs physical selection and visibility env vars",
                     )
                 )
         if path.suffix.lower() == ".py":
@@ -369,8 +344,8 @@ def check_modelzoo_constraints(root: Path, target: Path) -> list[Finding]:
             ):
                 findings.append(
                     Finding(
-                        "ERROR",
-                        f"{rel(path, root)}: runtime/assessment entry embeds an online data download",
+                        "INFO",
+                        f"{rel(path, root)}: data-loading API in runtime entry; verify preparation, local-only mode, and missing-file behavior",
                     )
                 )
             if re.search(
@@ -383,16 +358,17 @@ def check_modelzoo_constraints(root: Path, target: Path) -> list[Finding]:
                         f"{rel(path, root)}: broad exception may silently hide a required failure",
                     )
                 )
-        if path.name == "README.md":
-            if "download.pytorch.org/whl/cpu" in text and re.search(
-                r"torch[-_]npu", text, flags=re.I
-            ):
-                findings.append(
-                    Finding(
-                        "ERROR",
-                        f"{rel(path, root)}: CPU-only PyTorch install is mixed with torch_npu guidance",
-                    )
+        if (
+            path.name == "README.md"
+            and "download.pytorch.org/whl/cpu" in text
+            and re.search(r"torch[-_]npu", text, flags=re.IGNORECASE)
+        ):
+            findings.append(
+                Finding(
+                    "ERROR",
+                    f"{rel(path, root)}: CPU-only PyTorch install is mixed with torch_npu guidance",
                 )
+            )
     return findings
 
 
@@ -443,6 +419,10 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    if args.json_out and (args.json_out.exists() or args.json_out.is_symlink()):
+        print("ERROR: refusing to overwrite existing review output", file=sys.stderr)
+        return 2
+
     root = args.repo.resolve()
     target = args.target if args.target.is_absolute() else root / args.target
     target = target.resolve()
@@ -463,7 +443,6 @@ def main() -> int:
     findings += check_py_compile(target)
     if not args.no_ruff:
         findings += run_ruff(target)
-    findings += check_stale_commands(root, target)
     findings += check_batch_size_consistency(root, target)
     findings += check_readme_references(root, target)
     findings += check_review_patterns(root, target)
@@ -479,15 +458,17 @@ def main() -> int:
     print(
         f"SUMMARY: {len(errors)} error(s), {len(warnings)} warning(s), {len(infos)} info item(s)"
     )
+    print("Source checks only; content review and runtime validation are not performed.")
     if args.json_out:
         args.json_out.parent.mkdir(parents=True, exist_ok=True)
-        args.json_out.write_text(
-            json.dumps(
-                [finding.__dict__ for finding in findings], ensure_ascii=False, indent=2
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+        try:
+            with args.json_out.open("x", encoding="utf-8") as handle:
+                handle.write(json.dumps(
+                    [finding.__dict__ for finding in findings], ensure_ascii=False, indent=2
+                ) + "\n")
+        except OSError as exc:
+            print(f"ERROR: cannot create review output: {exc}", file=sys.stderr)
+            return 2
     return 1 if errors or (args.strict and warnings) else 0
 
 
