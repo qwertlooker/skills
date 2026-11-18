@@ -209,6 +209,36 @@ class DeliveryTests(unittest.TestCase):
                 delivery.assemble(source, ["README.md"], output, internal / "delivery-report.json")
             self.assertEqual("keep", (output / "keep.txt").read_text())
 
+    def test_failed_candidate_rename_rolls_back_only_this_report_and_can_be_retried(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source, internal = self.workspace(root)
+            output, report = root / "candidate", internal / "delivery-report.json"
+            with patch.object(delivery.os, "rename", side_effect=OSError("fixture rename failure")):
+                with self.assertRaisesRegex(OSError, "fixture rename failure"):
+                    delivery.assemble(source, ["README.md"], output, report)
+            self.assertFalse(report.exists())
+            self.assertFalse(output.exists())
+            delivery.assemble(source, ["README.md"], output, report)
+            delivery.verify_manifest(report)
+
+    def test_manifest_detects_added_files_and_posix_executable_drift(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source, internal = self.workspace(root)
+            output, report = root / "candidate", internal / "delivery-report.json"
+            delivery.assemble(source, ["README.md", "infer.py"], output, report)
+            self.assertEqual(0, self.cli("verify", "--report", report).returncode)
+            extra = output / "extra.py"
+            extra.touch()
+            with self.assertRaisesRegex(ValueError, "file set changed"):
+                delivery.verify_manifest(report)
+            extra.unlink()
+            if "executable_bits" in json.loads(report.read_text()):
+                (output / "infer.py").chmod(0o644)
+                with self.assertRaisesRegex(ValueError, "executable bits"):
+                    delivery.verify_manifest(report)
+
     def test_existing_report_is_preserved_without_creating_candidate(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

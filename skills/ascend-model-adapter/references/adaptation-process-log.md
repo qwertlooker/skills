@@ -55,9 +55,9 @@ python3 "$log" add-evidence "${project[@]}" --type comparison_report \
   --artifact "$COMPARE_REPORT" --compared-field candidate_sha256
 ```
 
-- `--artifact` 对精度记录表示本次比较实际消费的候选结果，可重复指定。首选从原比较报告读取当时记录的输入 SHA256：`--compared-field` 指向一个顶层字段（64 位十六进制字符串或其数组），`--artifact` 给这一个原生 JSON 报告。字段名以实际 evaluator 为准。若原生工具没有写输入摘要，用当次明确留存的不可变输入，逐个传 `--compared 文件`。旧路径若已复用且没有当时的摘要，直接用现存预测重做 compare，防止给旧报告补挂新文件。比较结论从其输入继承部署身份，参考端、评测器版本和阈值来源由报告记录。判据或基线改变时用保留的原始结果重新打分。若同一个官方程序同时打分和判阈值，使用它真实产生且包含两项事实的工件，不另造比较程序；从报告中核验用于判定的分数来源。额外执行日志用 `--log-path`。
+- `--artifact` 对精度记录表示本次比较实际消费的候选结果，可重复指定。首选从原比较报告读取当时记录的输入 SHA256：`--compared-field` 指向一个顶层字段（64 位十六进制字符串或其数组），`--artifact` 给这一个原生 JSON 报告。字段名以实际 evaluator 为准。正式 S3 要求评分时记录的输入摘要。若 evaluator 没有原生摘要，由执行评分的入口在当次读取时记录输入摘要并随报告保存。`--compared 文件` 可保留历史输入关联。旧结果没有评分时的摘要时，用仍有效的预测重做 compare。比较结论从其输入继承部署身份，参考端、评测器版本和阈值来源由报告记录。判据或基线改变时用保留的原始结果重新打分。若同一个官方程序同时打分和判阈值，使用它真实产生且包含两项事实的工件，不另造比较程序；从报告中核验用于判定的分数来源。额外执行日志用 `--log-path`。
 - 各项保存文件 SHA256。正式等级检查要求同一部署描述且非空的测量/报告，比较输入按内容与当前精度产物对应。新精度结果覆盖旧结论时，旧报告只能证明它实际评过的内容。用新预测重新 compare 即可，仍匹配的性能结果可复用。S4 扩展验证、上库审计和独立重放各自也需对应同一部署并留原始结果或执行日志。
-- 原生 JSON 若只有数值，给 `comparison_report`、`npu_performance` 或 `extended_validation` 的登记命令附上任务实际要求，如 `--require p95_e2e_ms lt 150`，升级和只读复核都会重新应用判据。独立读取文件可用[验证契约中的 check-report](validation-contract.md#先验证评测能发现错误)。比较器自身按任务判定退出时沿用该入口；单个 JSON 比较报告明确给出布尔 `passed=false` 时，退出码 0 也不能用于晋级。
+- 正式 `comparison_report` 需要布尔 `passed` 或任务的 `--require FIELD OP VALUE`。只有实际判阈值且经失败用例确认会返回非零的外部比较命令，才用 `--exit-code-is-verdict`。比较器退出成功后仍核对报告的评分输入摘要。对于纯数值的 `npu_performance` 或 `extended_validation`，按任务使用 `--require`，如 `--require p95_e2e_ms lt 150`。升级和复核会重新应用已声明的判据。独立读取文件可用[验证契约中的 check-report](validation-contract.md#先验证评测能发现错误)。比较器自身按任务判定退出时沿用该入口；单个 JSON 比较报告明确给出布尔 `passed=false` 时，退出码 0 也不能用于晋级。
 - 每类取最新记录，最新失败阻止升级与就绪，追加相关证据清除旧就绪标志。文件缺失或改写时按原始来源核实并重新登记。脚本检查指定字段和文件关系。模型指标的定义、样本与任务的关系，以及进程实际加载的设置仍须从原运行中核实。
 
 ## 提升状态与复核
@@ -68,15 +68,15 @@ python3 "$log" add-evidence "${project[@]}" --type comparison_report \
 python3 "$log" set-status "${project[@]}" --status S3
 ```
 
-脚本只允许逐级提升，同时复查截至目标等级的所有前置证据，不能绕过已失败的较低级检查。S0 后 target/upstream/weight baseline 冻结，S2 后 route/硬件冻结；需要改变时另建项目日志，避免旧证据解锁新上下文。达到 S3/S4 后仍需 `target_audit` 和 `clean_room_replay`，再运行 `set-target-ready`；该命令也复查技术等级所需证据。
+脚本只允许逐级提升。每项必需证据须有非空的 `--log-path` 或 `--artifact`，并通过最新执行结果和哈希复核。S0 后 target/upstream/weight baseline 冻结，S2 后 route/硬件冻结；需要改变时另建项目日志，避免旧证据解锁新上下文。达到 S3/S4 后，审计和独立重放都要从同一份组装报告开始。登记 `target_audit` 与 `clean_room_replay` 时分别加 `--candidate-manifest <组装报告>`，保留各自的原始证据。`set-target-ready` 复核技术状态、两个记录使用的组装报告及候选现有文件。
 
-普通 `show` 输出历史快照。准备引用既有等级时，用 `show --verify` 只读复查当前文件及依赖；复核正式部署可再给当前候选的描述：
+普通 `show` 输出历史快照。引用既有等级或就绪状态前，用 `show --verify` 复核。候选仅有文档变更时可用 `show --verify --technical-only` 独立复核技术等级，然后按新候选补审计和重放。复核正式部署还可给当前生效配置：
 
 ```bash
 python3 "$log" show "${project[@]}" --verify --subject "$CURRENT_META" --subject-fields deployment
 ```
 
-返回非零时保留原日志。旧日志仍可阅读；原始结果能核实部署与比较输入时，在原日志追加绑定后的记录，无需重跑推理。只有对应材料缺失或部署已改变时才补测。没有日志的项目可以直接审阅原始文件，日常 smoke、只读审阅或整理文档均无需建立 S3 记录。
+返回非零时保留原日志。旧日志仍可阅读。当前等级缺少依赖的证据绑定时，先核对原始产物，再追加符合新校验的记录。仍有效且完整的预测可直接离线重做比较。只有对应材料缺失或部署已改变时才补测。没有日志的项目可以直接审阅原始文件，日常 smoke、只读审阅或整理文档均无需建立 S3 记录。
 
 冻结前 `update-context` 的实际变更也会保留变更历史并使受影响证据失效：baseline 变化使全部证据失效，patch 要求变化保留 S0，路线/硬件变化保留 S0 与静态/patch 检查。失效记录不会删除或因改回旧值自动恢复，核实后重新登记；相同值更新不使证据失效。工具保留静态记录不代表新路线无需修改代码，实际代码变化仍按验证契约补验。
 

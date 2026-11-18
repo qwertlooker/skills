@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
+from delivery import verify_manifest
+
 ROUTES = ("onnx-om", "ort-cann", "torch-npu", "torchair", "vllm-ascend", "hybrid")
 STATUS_ORDER = ["S0", "S1", "S2", "S3", "S4"]
 STATUS_EVIDENCE = {
@@ -215,8 +217,10 @@ def init(args: argparse.Namespace) -> int:
 def add_evidence(args: argparse.Namespace) -> int:
     path = log_path(args.workspace, args.project_id, args.internal_dir)
     data = load_project(path, args.project_id)
-    if (args.compared or args.compared_field) and args.type != "comparison_report":
-        raise ValueError("scored inputs belong to comparison_report")
+    if (args.compared or args.compared_field or args.exit_code_is_verdict) and args.type != "comparison_report":
+        raise ValueError("scored inputs and comparison verdict belong to comparison_report")
+    if args.candidate_manifest and args.type not in READINESS_EVIDENCE:
+        raise ValueError("--candidate-manifest belongs to target_audit or clean_room_replay")
     outputs = [Path(value).expanduser().resolve() for value in args.artifact]
     log_file = Path(args.log_path).expanduser().resolve() if args.log_path else None
     artifacts = []
@@ -243,6 +247,12 @@ def add_evidence(args: argparse.Namespace) -> int:
         item["criteria"] = args.require
     if args.compared_field:
         item["compared_field"] = args.compared_field
+    if args.exit_code_is_verdict:
+        item["exit_code_is_verdict"] = True
+    if args.candidate_manifest:
+        manifest = args.candidate_manifest.expanduser().resolve()
+        item["candidate_manifest"] = file_record(manifest)
+        verify_manifest(manifest)
     if args.compared_field or args.require:
         report = native_report(item)
         if args.compared_field:
@@ -364,8 +374,6 @@ def validate_deployment(latest: dict, kinds: set[str], expected: dict | None) ->
     subjects = {}
     for kind in sorted(kinds):
         item = latest[kind]
-        if not any(a["sha256"] != EMPTY_SHA256 for a in item.get("artifacts", [])):
-            raise ValueError(f"{kind}: missing nonempty native result (--artifact or --log-path)")
         subject = item.get("subject")
         if not subject and kind == "comparison_report":
             continue  # A derived verdict inherits the subject of the scored files.
@@ -384,14 +392,16 @@ def validate_deployment(latest: dict, kinds: set[str], expected: dict | None) ->
     )
     comparison = latest["comparison_report"]
     report = native_report(comparison)
+    if not comparison.get("compared_field") or report is None:
+        raise ValueError("comparison_report needs scoring-time input digests via --compared-field; rescore saved results if needed")
     inputs = comparison_inputs(comparison, report)
-    if not outputs or set(outputs) == {EMPTY_SHA256} or inputs != outputs:
+    if not outputs or EMPTY_SHA256 in outputs or inputs != outputs:
         raise ValueError(
-            "comparison_report inputs (--compared-field or --compared) must match the current npu_accuracy "
+            "comparison_report inputs (--compared-field) must match the current npu_accuracy "
             "--artifact result files; score the saved results again if needed"
         )
-    if report is not None:
-        check_metrics(report, comparison.get("criteria", []), require_decision=False)
+    check_metrics(report, comparison.get("criteria", []),
+                  require_decision=not comparison.get("exit_code_is_verdict", False))
     for kind in sorted(kinds - {"comparison_report", "npu_accuracy"}):
         item = latest[kind]
         report = native_report(item)
@@ -418,9 +428,13 @@ def validate_evidence(data: dict, required: set[str], expected: dict | None = No
     digests = {}
     for kind in sorted(required):
         item = latest[kind]
-        files = [*item.get("artifacts", []), *item.get("compared", [])]
-        if item.get("subject"):
-            files.append(item["subject"])
+        artifacts = item.get("artifacts", [])
+        if not any(ref["sha256"] != EMPTY_SHA256 for ref in artifacts):
+            raise ValueError(f"{kind}: missing nonempty native result (--artifact or --log-path)")
+        files = [*artifacts, *item.get("compared", [])]
+        for field in ("subject", "candidate_manifest"):
+            if item.get(field):
+                files.append(item[field])
         for artifact in files:
             path = Path(artifact["path"])
             if path not in digests:
@@ -433,6 +447,12 @@ def validate_evidence(data: dict, required: set[str], expected: dict | None = No
         validate_deployment(latest, formal, expected)
     elif expected:
         raise ValueError("deployment matching is available for S3 and above")
+
+    if READINESS_EVIDENCE <= required:
+        manifests = [latest[kind].get("candidate_manifest") for kind in sorted(READINESS_EVIDENCE)]
+        if not all(manifests) or manifests[0]["sha256"] != manifests[1]["sha256"]:
+            raise ValueError("target_audit and clean_room_replay must bind the same --candidate-manifest")
+        verify_manifest(Path(manifests[0]["path"]))
 
 
 def verify_status(data: dict, status: str, *, ready: bool = False, expected: dict | None = None) -> None:
@@ -591,11 +611,14 @@ def set_target_ready(args: argparse.Namespace) -> int:
 def show(args: argparse.Namespace) -> int:
     path = log_path(args.workspace, args.project_id, args.internal_dir)
     data = load_project(path, args.project_id)
-    if args.subject and not args.verify:
-        raise ValueError("--subject requires --verify")
+    if (args.subject or args.technical_only) and not args.verify:
+        raise ValueError("--subject and --technical-only require --verify")
     if args.verify:
         expected = subject_record(args.subject, args.subject_fields) if args.subject else None
-        verify_status(data, data.get("status"), ready=data.get("target_ready", False), expected=expected)
+        ready = data.get("target_ready", False) and not args.technical_only
+        verify_status(data, data.get("status"), ready=ready, expected=expected)
+        if args.technical_only:
+            data.pop("target_ready", None)
         print("Recorded evidence and file links verified.", file=sys.stderr)
     print(json.dumps(data, ensure_ascii=False, indent=2))
     return 0
@@ -647,7 +670,11 @@ def main() -> int:
     scored = evidence_parser.add_mutually_exclusive_group()
     scored.add_argument("--compared-field", help="Native JSON report field containing the scored candidate SHA256(s)")
     scored.add_argument("--compared", type=Path, action="append", default=[],
-                        help="Immutable candidate result read in this comparison; repeat for each input")
+                        help="Archive a comparison input for reference; S3 requires --compared-field")
+    evidence_parser.add_argument("--exit-code-is-verdict", action="store_true",
+                                 help="The external comparison command returns nonzero when the acceptance threshold fails")
+    evidence_parser.add_argument("--candidate-manifest", type=Path,
+                                 help="Assembly report captured for this target audit or clean-room replay")
     evidence_parser.set_defaults(func=add_evidence)
 
     status_parser = subparsers.add_parser(
@@ -715,6 +742,8 @@ def main() -> int:
     show_parser.add_argument("--workspace", type=Path, required=True)
     show_parser.add_argument("--project-id", required=True)
     show_parser.add_argument("--verify", action="store_true", help="Recheck historical status and readiness without writing")
+    show_parser.add_argument("--technical-only", action="store_true",
+                             help="With --verify, verify the technical level independently of candidate readiness")
     show_parser.set_defaults(func=show)
 
     check_parser = subparsers.add_parser("check-report", help="Apply acceptance criteria to a native JSON report without a log")

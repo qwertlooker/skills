@@ -292,6 +292,8 @@ class ProjectLogTests(unittest.TestCase):
             )
             blocked = self.run_log("set-status", *common, "--status", "S0")
             self.assertNotEqual(0, blocked.returncode)
+            observation = Path(temp) / "observation.log"
+            observation.write_text("synthetic fixture observations", encoding="utf-8")
             for evidence_type in ("target_baseline", "upstream_audit"):
                 evidence = self.run_log(
                     "add-evidence",
@@ -304,6 +306,8 @@ class ProjectLogTests(unittest.TestCase):
                     "0",
                     "--claim",
                     f"{evidence_type} passed",
+                    "--log-path",
+                    observation,
                 )
                 self.assertEqual(0, evidence.returncode, evidence.stderr)
             advanced = self.run_log("set-status", *common, "--status", "S0")
@@ -328,6 +332,8 @@ class ProjectLogTests(unittest.TestCase):
                     "0",
                     "--claim",
                     f"{evidence_type} passed",
+                    "--log-path",
+                    observation,
                 )
                 self.assertEqual(0, evidence.returncode, evidence.stderr)
                 status_result = self.run_log("set-status", *common, "--status", status)

@@ -51,7 +51,7 @@ python3 "$SKILL_DIR/scripts/modelzoo_sampler.py" --count <所需样本数> --cat
 - 许可证、版权头、`modelzoo_level.txt`、ModeList、自测试及其他元数据按当前目标仓规范判断；不能因历史目录缺失就跳过，也不生成虚假通过文件。
 - ModelZoo 运行 `modelzoo_pr_quickcheck.py <repo> --target <路径> --strict`，再补模型特定验证。工具启发式命中须核实，不把现有工具的误报当硬规则。
 - 仓内有 `tools/audit_model_delivery.py` 时运行基础审计及 `--target-readiness --target-path ...`；缺失时按规范逐项核查，明确该工具未执行。
-- 重放保存源码/patch、安装/import、权重、manifest/样本数、NPU、compare 与结果证据；未执行最低路径命令不得假定可用。
+- 重放保存源码/patch、安装/import、权重、数据 manifest/样本数、NPU、compare 与结果证据。审计与重放分别绑定同一份候选组装报告，登记前复核文件集合、哈希和执行位。
 - 技术等级、上库候选就绪及合入证明按验证契约分别判断；状态不回填 README。正式合入只由 merged/目标 commit 证明。
 
 ## PR 证据与问题闭环

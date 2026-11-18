@@ -60,7 +60,7 @@ python3 "$SKILL_DIR/scripts/project_log.py" check-report compare.json \
 | S0 | 冻结目标、上游与权重，`target_baseline`、`upstream_audit`。 |
 | S1 | `static_check`，需要 patch 时含 `patch_check`。 |
 | S2 | `functional_inference` 记录真实端到端输出和实际 device/provider；结论限于实测设备与输入。 |
-| S3 | 同一部署的 `npu_accuracy`、`npu_performance` 和读取该次质量结果的 `comparison_report`，内容符合上述业务验收。 |
+| S3 | 同一部署的 `npu_accuracy`、`npu_performance` 和 `comparison_report`。比较报告须有评分时的候选输入摘要和明确的业务判据。 |
 | S4 | 同一部署的 `extended_validation`，覆盖用户约定的长稳、多并发或业务集。 |
 
-项目日志逐级复核前置证据；文件绑定、复核旧日志与变更规则见[日志操作](adaptation-process-log.md)。S3/S4 加上当前候选的目标仓审计与干净环境重放才可标记上库就绪；按目标仓运行 `tools/audit_model_delivery.py <model_dir> --target-readiness --target-path ...` 或等价门禁。重放只使用候选及 README 声明的依赖。合入由目标仓 merged/commit 证明。内部等级只进入私有记录或用户要求的报告。
+项目日志逐级复核前置证据，每项都需要非空结果或日志。文件绑定、复核旧日志与变更规则见[日志操作](adaptation-process-log.md)。S3/S4 加上当前候选的目标仓审计与干净环境重放才可标记上库就绪；按目标仓运行 `tools/audit_model_delivery.py <model_dir> --target-readiness --target-path ...` 或等价门禁。审核和重放须绑定同一份候选组装报告，复核时检查候选文件和执行位。重放只使用候选及 README 声明的依赖。合入由目标仓 merged/commit 证明。内部等级只进入私有记录或用户要求的报告。

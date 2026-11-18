@@ -27,6 +27,18 @@ class ResumeLogScenarios(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.subject = self.root / "resolved.json"
         self.subject.write_text(json.dumps({"implementation": "fixture-A", "precision": "bf16"}))
+        self.trace = self.root / "observations.log"
+        self.trace.write_text("synthetic observations\n", encoding="utf-8")
+        self.candidate = self.root / "candidate"
+        self.candidate_source = self.root / "public-source"
+        self.candidate_source.mkdir()
+        (self.candidate_source / "README.md").write_text("# Test model\n", encoding="utf-8")
+        files = self.root / "candidate-files.json"
+        files.write_text('["README.md"]', encoding="utf-8")
+        self.manifest = self.root / "delivery-report.json"
+        assembled = cli("delivery.py", "assemble", "--source", self.candidate_source,
+                        "--files", files, "--output", self.candidate, "--report", self.manifest)
+        self.assertEqual(0, assembled.returncode, assembled.stderr)
         self.results = {}
         for kind, payload in {
             "npu_accuracy": {"scores": [1, 1]},
@@ -39,6 +51,8 @@ class ResumeLogScenarios(unittest.TestCase):
             path = self.root / (kind + ".json")
             path.write_text(json.dumps(payload))
             self.results[kind] = path
+        self.write_comparison(self.results["comparison_report"], {"passed": True, "samples": 2},
+                              self.results["npu_accuracy"])
         self.common = ["--workspace", self.root, "--project-id", "fixture"]
         result = self.log(
             "init", "--model-url", "https://example.invalid/fixture",
@@ -52,15 +66,23 @@ class ResumeLogScenarios(unittest.TestCase):
     def log(self, action, *args):
         return cli("project_log.py", action, *self.common, *args)
 
-    def evidence(self, kind, code=0, artifact=None, *, subject=None, compared=None):
+    def write_comparison(self, path, verdict, *inputs):
+        hashes = [hashlib.sha256(item.read_bytes()).hexdigest() for item in inputs]
+        path.write_text(json.dumps({**verdict, "candidate_sha256": hashes}), encoding="utf-8")
+
+    def evidence(self, kind, code=0, artifact=None, *, subject=None):
         extra = []
         if kind in self.results:
             extra.extend(["--subject", subject or self.subject])
             artifact = artifact or self.results[kind]
         if artifact is not None:
             extra.extend(["--artifact", artifact])
+        else:
+            extra.extend(["--log-path", self.trace])
         if kind == "comparison_report":
-            extra.extend(["--compared", compared or self.results["npu_accuracy"]])
+            extra.extend(["--compared-field", "candidate_sha256"])
+        if kind in {"target_audit", "clean_room_replay"}:
+            extra.extend(["--candidate-manifest", self.manifest])
         result = self.log("add-evidence", "--type", kind, "--command", "synthetic-fixture",
                           "--exit-code", code, "--claim", "test fixture only", *extra)
         self.assertEqual(0, result.returncode, result.stderr)
@@ -159,15 +181,14 @@ class ResumeLogScenarios(unittest.TestCase):
         self.evidence("clean_room_replay")
         self.assertNotEqual(0, self.log("set-target-ready").returncode)
         revised = self.root / "recomputed.json"
-        revised.write_text('{"passed":true,"min_correct":1,"actual":1}')
-        self.evidence("comparison_report", artifact=revised, compared=updated)
-        self.assertEqual(0, self.log("set-target-ready").returncode)
-        # A report on a byte-identical independent copy is valid, too.
+        # The scorer may read a byte-identical archived copy of the input.
         copied = self.root / "scores-used-by-judge.json"
         copied.write_bytes(updated.read_bytes())
-        self.evidence("comparison_report", artifact=revised, compared=copied)
+        self.write_comparison(revised, {"passed": True, "min_correct": 1, "actual": 1}, copied)
+        self.evidence("comparison_report", artifact=revised)
+        self.assertEqual(0, self.log("set-target-ready").returncode)
         self.assertEqual(0, self.log("show", "--verify").returncode)
-        copied.unlink()
+        updated.unlink()
         self.assertNotEqual(0, self.log("show", "--verify").returncode)
 
     def test_historical_snapshot_readable_without_silently_endorsing_it(self):
@@ -180,6 +201,8 @@ class ResumeLogScenarios(unittest.TestCase):
         for row in legacy["evidence"]:
             row.pop("subject", None)
             row.pop("compared", None)
+            row.pop("compared_field", None)
+            row.pop("candidate_manifest", None)
             for artifact in row["artifacts"]:
                 artifact.pop("role", None)
         path.write_text(json.dumps(legacy))
@@ -213,7 +236,7 @@ class ResumeLogScenarios(unittest.TestCase):
         self.assertEqual(0, native("npu_performance", other).returncode)
         report = self.log("add-evidence", "--type", "comparison_report", "--command", "score fixture",
                           "--exit-code", 0, "--claim", "fixture", "--artifact", self.results["comparison_report"],
-                          "--compared", self.results["npu_accuracy"])
+                          "--compared-field", "candidate_sha256")
         self.assertEqual(0, report.returncode, report.stderr)
         rejected = self.log("set-status", "--status", "S3")
         self.assertIn("subjects differ", rejected.stderr)
@@ -244,9 +267,10 @@ class ResumeLogScenarios(unittest.TestCase):
         rejected = self.log("set-status", "--status", "S3")
         self.assertNotEqual(0, rejected.returncode)
         self.assertIn("--compared", rejected.stderr)
+        combined = self.root / "combined-report.json"
+        self.write_comparison(combined, {"passed": True}, other_score, self.results["npu_accuracy"])
         result = self.log("add-evidence", "--type", "comparison_report", *common,
-                          "--artifact", self.results["comparison_report"],
-                          "--compared", other_score, "--compared", self.results["npu_accuracy"])
+                          "--artifact", combined, "--compared-field", "candidate_sha256")
         self.assertEqual(0, result.returncode, result.stderr)
         self.advance("S3")
 
@@ -319,19 +343,21 @@ class ResumeLogScenarios(unittest.TestCase):
         self.prepare("S2")
         self.evidence("npu_accuracy")
         self.evidence("npu_performance")
-        report = self.results["comparison_report"]
+        report = self.root / "ambiguous-report.json"
         report.write_text('{"passed":false,"passed":true}')
-        self.evidence("comparison_report", artifact=report)
-        result = self.log("set-status", "--status", "S3")
+        result = self.log("add-evidence", "--type", "comparison_report", "--command", "fixture",
+                          "--exit-code", 0, "--claim", "synthetic", "--artifact", report,
+                          "--compared-field", "candidate_sha256")
         self.assertEqual(2, result.returncode, result.stderr)
         self.assertIn("duplicate report field", result.stderr)
+        self.assertNotEqual(0, self.log("set-status", "--status", "S3").returncode)
 
     def test_same_deployment_and_file_hashes_cannot_override_failed_native_verdict(self):
         self.prepare("S2")
         self.evidence("npu_accuracy")
         self.evidence("npu_performance")
         report = self.root / "native-verdict.json"
-        report.write_text('{"passed":false,"score":0}')
+        self.write_comparison(report, {"passed": False, "score": 0}, self.results["npu_accuracy"])
         self.evidence("comparison_report", artifact=report)
         blocked = self.log("set-status", "--status", "S3")
         self.assertEqual(1, blocked.returncode, blocked.stderr)
@@ -351,6 +377,56 @@ class ResumeLogScenarios(unittest.TestCase):
         summary.write_text('{"mean_ms":100}')
         self.assertEqual(0, self.log("add-evidence", *common, "--artifact", summary).returncode)
         self.assertEqual(2, self.log("show", "--verify").returncode)
+
+    def test_score_only_result_requires_explicit_acceptance_and_scoring_time_binding(self):
+        self.prepare("S2")
+        scores = self.results["npu_accuracy"]
+        self.evidence("npu_accuracy")
+        self.evidence("npu_performance")
+        report = self.root / "raw-score.json"
+        self.write_comparison(report, {"score": 0}, scores)
+        args = ["--type", "comparison_report", "--command", "fixture",
+                "--exit-code", 0, "--claim", "synthetic", "--artifact", report]
+        field = ["--compared-field", "candidate_sha256"]
+
+        self.assertEqual(0, self.log("add-evidence", *args, *field).returncode)
+        self.assertIn("no native boolean verdict", self.log("set-status", "--status", "S3").stderr)
+        self.assertEqual(0, self.log("add-evidence", *args, *field, "--require", "score", "eq", 1).returncode)
+        self.assertEqual(1, self.log("set-status", "--status", "S3").returncode)
+
+        scores.write_text('{"scores":[1,0]}', encoding="utf-8")
+        self.evidence("npu_accuracy")
+        verdict_flag = ["--exit-code-is-verdict"]
+        self.assertEqual(0, self.log("add-evidence", *args, "--compared", scores, *verdict_flag).returncode)
+        self.assertIn("scoring-time", self.log("set-status", "--status", "S3").stderr)
+        self.assertEqual(0, self.log("add-evidence", *args, *field, *verdict_flag).returncode)
+        self.assertIn("must match", self.log("set-status", "--status", "S3").stderr)
+        accepted = self.root / "actual-verdict.json"
+        self.write_comparison(accepted, {"score": 1}, scores)
+        args[-1] = accepted
+        self.assertEqual(0, self.log("add-evidence", *args, *field, *verdict_flag).returncode)
+        self.advance("S3")
+
+    def test_readiness_requires_same_manifest_and_candidate_stays_current(self):
+        self.prepare("S3")
+        self.evidence("target_audit")
+        original = self.manifest
+        other = self.root / "different-report.json"
+        other.write_bytes(original.read_bytes() + b"\n")
+        self.manifest = other
+        self.evidence("clean_room_replay")
+        self.assertIn("same --candidate-manifest", self.log("set-target-ready").stderr)
+        self.manifest = original
+        self.evidence("clean_room_replay")
+        self.assertEqual(0, self.log("set-target-ready").returncode)
+        self.assertEqual(0, self.log("show", "--verify").returncode)
+
+        (self.candidate / "README.md").write_text("# Updated model\n", encoding="utf-8")
+        self.assertIn("candidate file digest changed", self.log("show", "--verify").stderr)
+        technical = self.log("show", "--verify", "--technical-only")
+        self.assertEqual(0, technical.returncode, technical.stderr)
+        self.assertEqual("S3", json.loads(technical.stdout)["status"])
+        self.assertNotIn("target_ready", json.loads(technical.stdout))
 
     def test_parallel_runs_preserve_every_observation(self):
         def record(index):

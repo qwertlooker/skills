@@ -37,6 +37,11 @@ class WorkflowRegressions(unittest.TestCase):
                          "--route", "torch-npu", "--hardware-model", "fixture-hardware"))
 
     def evidence(self, kind, *extra):
+        if not extra:
+            trace = self.root / "fixture-log.txt"
+            if not trace.exists():
+                trace.write_text("synthetic observations", encoding="utf-8")
+            extra = ("--log-path", trace)
         return self.log("add-evidence", "--type", kind, "--command", "fixture-only",
                         "--exit-code", "0", "--claim", "synthetic fixture", *extra)
 
@@ -86,6 +91,25 @@ class WorkflowRegressions(unittest.TestCase):
         self.assertEqual("fixture", json.loads(result.stdout)["project_id"])
         other = self.log("init", "--model-url", "other", "--target-path", "candidate")
         self.assertNotEqual(0, other.returncode)
+
+    def test_formal_stage_rejects_success_without_nonempty_observations(self):
+        self.init()
+        self.ok(self.log("update-context", "--patch-required"))
+        empty = self.root / "empty.log"
+        empty.touch()
+        for status, kinds in [("S0", ["upstream_audit", "target_baseline"]),
+                              ("S1", ["static_check", "patch_check"]),
+                              ("S2", ["functional_inference"])]:
+            for kind in kinds:
+                with self.subTest(kind=kind):
+                    args = ["--type", kind, "--command", "fixture", "--exit-code", 0, "--claim", "synthetic"]
+                    self.ok(self.log("add-evidence", *args))
+            for kind in sorted(kinds):
+                self.assertIn("missing nonempty native result", self.log("set-status", "--status", status).stderr)
+                self.ok(self.evidence(kind, "--log-path", empty))
+                self.assertIn("missing nonempty native result", self.log("set-status", "--status", status).stderr)
+                self.ok(self.evidence(kind))
+            self.ok(self.log("set-status", "--status", status))
 
     def test_log_only_evidence_is_checked_and_cannot_be_overwritten_silently(self):
         self.init()

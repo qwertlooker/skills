@@ -121,7 +121,7 @@ def render_facts(facts: object) -> str:
     return result
 
 
-def atomic_write(path: Path, content: str, force: bool = False) -> None:
+def atomic_write(path: Path, content: str, force: bool = False) -> os.stat_result:
     if path.is_symlink() or (path.exists() and not force):
         raise FileExistsError(f"refusing to overwrite {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -130,10 +130,14 @@ def atomic_write(path: Path, content: str, force: bool = False) -> None:
         try:
             handle.write(content)
             handle.close()
-            if not force and path.exists():
-                raise FileExistsError(f"refusing to overwrite {path}")
-            temporary.chmod(path.stat().st_mode & 0o777 if path.exists() else 0o644)
-            temporary.replace(path)
+            temporary.chmod(path.stat().st_mode & 0o777 if force and path.exists() else 0o644)
+            published = temporary.stat()
+            if force:
+                temporary.replace(path)
+            else:
+                # Publish a complete file without replacing a competing writer's file.
+                os.link(temporary, path)
+            return published
         finally:
             temporary.unlink(missing_ok=True)
 
@@ -176,6 +180,30 @@ def selected_files(source: Path, entries: object) -> list[Path]:
     return selected
 
 
+def verify_manifest(report: Path) -> None:
+    """Check the current candidate against its assembly report."""
+    data = json.loads(report.read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or not isinstance(data.get("candidate"), str):
+        raise ValueError("candidate manifest must name the assembled candidate directory")
+    candidate = Path(data["candidate"])
+    if not candidate.is_absolute() or candidate.resolve() != candidate:
+        raise ValueError("candidate manifest must name an absolute, resolved directory")
+    require_clean(check_candidate(candidate))
+    expected = data.get("files")
+    if not isinstance(expected, dict) or not expected:
+        raise ValueError("candidate manifest must contain file digests")
+    actual = {path.relative_to(candidate).as_posix(): path
+              for path in candidate.rglob("*") if path.is_file()}
+    if actual.keys() != expected.keys():
+        raise ValueError("candidate file set changed; assemble, audit and replay the current candidate")
+    if any(digest(path) != expected[name] for name, path in actual.items()):
+        raise ValueError("candidate file digest changed; assemble, audit and replay the current candidate")
+    if os.name == "posix":
+        executable_bits = {name: path.stat().st_mode & 0o111 for name, path in actual.items()}
+        if data.get("executable_bits") != executable_bits:
+            raise ValueError("candidate executable bits are missing or changed; assemble and replay on POSIX")
+
+
 def assemble(source: Path, entries: object, output: Path, report: Path) -> dict:
     if source.is_symlink() or not source.is_dir():
         raise ValueError("source must be a directory, not a symbolic link")
@@ -212,11 +240,23 @@ def assemble(source: Path, entries: object, output: Path, report: Path) -> dict:
             if digest(destination) != hashes[relative.as_posix()]:
                 raise ValueError(f"source changed during assembly: {relative}")
         require_clean(check_candidate(staged))
+        if os.name == "posix":
+            result["executable_bits"] = {
+                name: (staged / name).stat().st_mode & 0o111 for name in hashes
+            }
         if output.exists() or output.is_symlink():
             raise FileExistsError(f"candidate directory appeared during assembly: {output}")
         # Write provenance outside the candidate before exposing the new directory.
-        atomic_write(report, json.dumps(result, ensure_ascii=False, indent=2) + "\n")
-        os.rename(staged, output)
+        published = atomic_write(report, json.dumps(result, ensure_ascii=False, indent=2) + "\n")
+        try:
+            os.rename(staged, output)
+        except BaseException:
+            try:
+                if os.path.samestat(published, report.lstat()):
+                    report.unlink()
+            except FileNotFoundError:
+                pass
+            raise
     return result
 
 
@@ -229,6 +269,8 @@ def main() -> int:
     render.add_argument("--force", action="store_true")
     check = commands.add_parser("check", help="Check explicit information boundaries")
     check.add_argument("candidate", type=Path, help="A public Markdown file or an assembled candidate directory")
+    verify = commands.add_parser("verify", help="Recheck an assembled candidate against its report")
+    verify.add_argument("--report", type=Path, required=True)
     package = commands.add_parser("assemble", help="Copy an explicit list into a new candidate")
     package.add_argument("--source", type=Path, required=True)
     package.add_argument("--files", type=Path, required=True)
@@ -243,6 +285,9 @@ def main() -> int:
         elif args.action == "check":
             require_clean(check_candidate(args.candidate))
             print("Delivery boundary checks passed; semantic review and runtime validation remain required.")
+        elif args.action == "verify":
+            verify_manifest(args.report)
+            print("Candidate files match the assembly report.")
         else:
             if args.report.resolve() == args.files.resolve():
                 raise ValueError("delivery report cannot overwrite the candidate file list")
