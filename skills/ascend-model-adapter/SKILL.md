@@ -15,7 +15,7 @@ description: 将真实模型迁移到昇腾 Ascend NPU，选择或修复推理�
 | 跑通或修复 | 沿实际入口复现，保留指定权重和输入。优先取得独立参照，局部替换受阻组件并重放到实际业务输出。暂缺参照时先验证功能，注明语义等价待验。只要求单样例时到此验收。[适配工作流](references/workflow-adaptation.md) |
 | 跑通训练、微调或断点续训 | 从上游训练命令进入，验证一次有效参数更新。要求续训时从落盘的 checkpoint 恢复并再走一步。[训练验收](references/workflow-adaptation.md#训练与断点续训) |
 | 做精度、性能验收或优化 | 确认测量能发现目标故障、结果来自要交付的配置，再投入整套评测。性能未达标时用该负载的关键路径选优化对象。[验证契约](references/validation-contract.md) |
-| 接手或只读审查 | 从当前 README、入口、实际结果和现有 diff 重建已完成部分；复核决定当前结论的调用链。修复任务重放受影响操作，审查任务报告可复现的问题、影响和缺口。[内容审阅](references/content-review.md) |
+| 接手或只读审查 | 从当前 README、入口、实际结果和现有 diff 重建已完成部分；复核决定当前结论的调用链。修复任务重放受影响操作，审查任务报告可复现的问题、影响和缺口。[内容审阅](references/content-review.md)、[审阅清单](references/review-checklist.md) |
 | 整理文档或上库 | 按接收者能拿到的文件核对运行方法和指标来源。文档就地更新，独立候选按清单组装并重放。ModelZoo 另核对目标仓贡献要求。[交付工作流](references/workflow-delivery.md)、[验收清单](references/modelzoo-delivery.md) |
 
 ## 执行与交接
